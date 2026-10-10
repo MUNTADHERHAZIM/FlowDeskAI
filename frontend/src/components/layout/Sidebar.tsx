@@ -1,0 +1,120 @@
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Inbox,
+  Calendar,
+  Users,
+  Workflow,
+  Bot,
+  Share2,
+  Settings,
+  Sparkles,
+  Zap,
+} from "lucide-react";
+
+interface NavItem {
+  title: string;
+  href: string;
+  icon: React.ElementType;
+  badge?: string;
+}
+
+const navItems: NavItem[] = [
+  { title: "لوحة التحكم العامة", href: "/", icon: LayoutDashboard },
+  { title: "صندوق الوارد الموحد", href: "/inbox", icon: Inbox, badge: "3" },
+  { title: "التقويم والمواعيد", href: "/calendar", icon: Calendar },
+  { title: "إدارة العملاء (CRM)", href: "/contacts", icon: Users },
+  { title: "محرّك الأتمتة المرئي", href: "/workflows", icon: Workflow, badge: "جديد" },
+  { title: "الذكاء الاصطناعي والمعرفة", href: "/knowledge", icon: Bot },
+  { title: "التكاملات والقنوات", href: "/integrations", icon: Share2 },
+  { title: "إعدادات المؤسسة", href: "/settings", icon: Settings },
+];
+
+export function Sidebar() {
+  const pathname = usePathname();
+
+  return (
+    <aside className="w-64 bg-[#0d121f] border-l border-gray-800/80 flex flex-col h-screen sticky top-0 select-none z-30 transition-all duration-300">
+      {/* Brand Header */}
+      <div className="h-16 flex items-center px-6 border-b border-gray-800/80 justify-between">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <Zap className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <span className="font-extrabold text-lg text-white tracking-tight flex items-center gap-1.5">
+              FlowDesk <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 text-xs font-semibold px-1 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">AI</span>
+            </span>
+          </div>
+        </Link>
+      </div>
+
+      {/* Navigation Links */}
+      <div className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
+        <div className="px-3 pb-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+          الوحدات الأساسية
+        </div>
+
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group ${
+                isActive
+                  ? "bg-gradient-to-r from-indigo-600/20 to-indigo-500/10 text-indigo-300 border border-indigo-500/30 shadow-sm"
+                  : "text-gray-400 hover:text-gray-100 hover:bg-gray-800/50"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Icon
+                  className={`w-4 h-4 transition-transform group-hover:scale-110 ${
+                    isActive ? "text-indigo-400" : "text-gray-400 group-hover:text-gray-200"
+                  }`}
+                />
+                <span>{item.title}</span>
+              </div>
+
+              {item.badge && (
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    item.badge === "جديد"
+                      ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                      : "bg-indigo-500/20 text-indigo-300"
+                  }`}
+                >
+                  {item.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Subscription Card */}
+      <div className="p-4 m-3 rounded-2xl bg-gradient-to-b from-gray-800/40 to-indigo-950/20 border border-indigo-500/20 relative overflow-hidden">
+        <div className="flex items-center gap-2 mb-2 text-indigo-300 text-xs font-semibold">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>محرك الذكاء والـ MVP</span>
+        </div>
+        <p className="text-[11px] text-gray-400 leading-relaxed mb-3">
+          المنصة متصلة بـ 4 قنوات (Web, WhatsApp, Telegram, Email).
+        </p>
+        <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-500 to-cyan-400 h-1.5 rounded-full w-3/4"></div>
+        </div>
+        <div className="flex justify-between items-center text-[10px] text-gray-400 mt-2">
+          <span>الاستهلاك</span>
+          <span className="font-bold text-gray-200">75%</span>
+        </div>
+      </div>
+    </aside>
+  );
+}

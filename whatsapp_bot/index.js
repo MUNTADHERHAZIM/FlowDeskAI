@@ -17,6 +17,31 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5050;
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const SETTINGS_FILE = './bot_settings.json';
+let botSettings = {
+  businessName: 'FlowDesk AI',
+  dialect: 'iraqi',
+  tone: 'friendly',
+  greetingMessage: 'أهلاً وسهلاً بحضرتك! يسعدنا خدمتك عبر المساعد الذكي لـ FlowDesk AI. كيف يمكننا مساعدتك اليوم بخصوص الاستفسارات والمواعيد؟',
+  knowledgeBase: 'ساعات العمل الرسمية: يومياً من الساعة 9:00 صباحاً وحتى 10:00 مساءً طوال أيام الأسبوع.\nالخدمات: استشارات طبية وتقنية، حجز مواعيد، وخدمة عملاء فورية.\nالأسعار: كشف الاستشارة 35,000 دينار عراقي.\nالموقع: فرعنا الرئيسي متاح لاستقبالكم طوال أيام الأسبوع.'
+};
+
+if (fs.existsSync(SETTINGS_FILE)) {
+  try {
+    botSettings = { ...botSettings, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) };
+  } catch (e) {}
+}
+
+function saveBotSettings(newSettings) {
+  botSettings = { ...botSettings, ...newSettings };
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(botSettings, null, 2), 'utf8');
+  } catch (e) {}
+}
+
 let currentQR = null;
 let currentQRDataUrl = null;
 let connectionStatus = 'initializing';
@@ -56,6 +81,13 @@ app.get('/', (req, res) => {
     .log-meta { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
     .log-incoming { font-size: 13px; color: #e5e7eb; margin-bottom: 6px; }
     .log-reply { font-size: 13px; color: #34d399; font-weight: 500; }
+    .settings-card { margin-top: 24px; text-align: right; width: 100%; max-width: 580px; background: #131b2e; border: 1px solid #1f293d; border-radius: 16px; padding: 22px; }
+    .form-group { margin-bottom: 14px; text-align: right; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: #93c5fd; margin-bottom: 6px; }
+    .form-select, .form-input, .form-textarea { width: 100%; background: #0c1220; border: 1px solid #1f293d; border-radius: 10px; padding: 10px 14px; color: #f3f4f6; font-size: 13px; outline: none; transition: all 0.2s; font-family: inherit; }
+    .form-select:focus, .form-input:focus, .form-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+    .btn-save { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; border: none; padding: 11px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px; width: 100%; margin-top: 6px; transition: all 0.2s; }
+    .btn-save:hover { background: #1d4ed8; filter: brightness(1.1); }
   </style>
   <script>
     let status = "${connectionStatus}";
@@ -82,6 +114,41 @@ app.get('/', (req, res) => {
         btn.innerHTML = '🔄 قطع الاتصال والاقتران برقم آخر';
       }
     }
+
+    async function handleSaveSettings(e) {
+      e.preventDefault();
+      const btn = document.getElementById('saveBtn');
+      const msg = document.getElementById('saveMsg');
+      btn.disabled = true;
+      btn.innerHTML = '⏳ جاري الحفظ والتطبيق...';
+      try {
+        const body = {
+          businessName: document.getElementById('businessName').value,
+          dialect: document.getElementById('dialect').value,
+          tone: document.getElementById('tone').value,
+          greetingMessage: document.getElementById('greetingMessage').value,
+          knowledgeBase: document.getElementById('knowledgeBase').value,
+        };
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (res.ok) {
+          msg.style.display = 'block';
+          btn.innerHTML = '✅ تم الحفظ بنجاح!';
+          setTimeout(() => {
+            msg.style.display = 'none';
+            btn.disabled = false;
+            btn.innerHTML = '💾 حفظ التعديلات وتطبيقها فوراً على الردود';
+          }, 2500);
+        }
+      } catch (err) {
+        alert('حدث خطأ أثناء حفظ الإعدادات');
+        btn.disabled = false;
+        btn.innerHTML = '💾 حفظ التعديلات وتطبيقها فوراً على الردود';
+      }
+    }
   </script>
 </head>
 <body>
@@ -92,7 +159,7 @@ app.get('/', (req, res) => {
         <div class="success-icon">🎉</div>
         <h2 style="font-size: 18px; margin-bottom: 6px; color: #34d399;">واتسابك مربوط وجاهز للرد!</h2>
         <p style="font-size: 14px; color: #9ca3af;">الرقم المتصل: <strong style="color: #fff;">${connectedUser || 'رقمك الشخصي'}</strong></p>
-        <p style="font-size: 13px; color: #6ee7b7; margin-top: 8px;">أي شخص يرسل لك رسالة الآن، سيرد عليه الذكاء الاصطناعي نيابة عنك فوراً.</p>
+        <p style="font-size: 13px; color: #6ee7b7; margin-top: 8px;">أي شخص يرسل لك رسالة الآن، سيرد عليه الذكاء الاصطناعي بناءً على اللهجة والمعلومات المحددة أدناه.</p>
         
         <div style="margin-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
           <button onclick="handleDisconnect(this)" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 10px 22px; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 13px; transition: all 0.2s;">
@@ -121,6 +188,55 @@ app.get('/', (req, res) => {
     `}
   </div>
 
+  <div class="settings-card">
+    <div class="logs-title">
+      <span>🧠 تخصيص شخصية وقاعدة معرفة الذكاء الاصطناعي</span>
+      <span style="font-size: 11px; color: #60a5fa;">تحديث فوري</span>
+    </div>
+    
+    <form id="settingsForm" onsubmit="handleSaveSettings(event)">
+      <div class="form-group">
+        <label class="form-label">اسم النشاط أو المؤسسة:</label>
+        <input type="text" id="businessName" class="form-input" value="${botSettings.businessName || ''}" placeholder="مثال: عيادة د. أحمد / متجر الفخامة" required />
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">لهجة الرد (Dialect):</label>
+          <select id="dialect" class="form-select">
+            <option value="iraqi" ${botSettings.dialect === 'iraqi' ? 'selected' : ''}>🇮🇶 اللهجة العراقية (أهلاً بيك، تدلل)</option>
+            <option value="gulf" ${botSettings.dialect === 'gulf' ? 'selected' : ''}>🇸🇦 اللهجة الخليجية (يا هلا، أبشر)</option>
+            <option value="formal" ${botSettings.dialect === 'formal' ? 'selected' : ''}>🏛️ العربية الفصحى (أهلاً وسهلاً بحضرتكم)</option>
+            <option value="egyptian" ${botSettings.dialect === 'egyptian' ? 'selected' : ''}>🇪🇬 اللهجة المصرية (أهلاً بحضرتك يا فندم)</option>
+            <option value="shami" ${botSettings.dialect === 'shami' ? 'selected' : ''}>🇱🇧 اللهجة الشامية (أهلاً وسهلاً، تكرم عينك)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">نبرة الرد (Tone):</label>
+          <select id="tone" class="form-select">
+            <option value="friendly" ${botSettings.tone === 'friendly' ? 'selected' : ''}>😊 ودود ولطيف ومرحب</option>
+            <option value="professional" ${botSettings.tone === 'professional' ? 'selected' : ''}>👔 رسمي ومهني واحترافي</option>
+            <option value="sales" ${botSettings.tone === 'sales' ? 'selected' : ''}>🚀 تسويقي ومحفز للمبيعات</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">رسالة الترحيب الأولى (Greeting Message):</label>
+        <input type="text" id="greetingMessage" class="form-input" value="${botSettings.greetingMessage || ''}" placeholder="الرسالة التي يتم الرد بها عند إلقاء السلام أو التحية" required />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">مربع معلومات النشاط / قاعدة المعرفة (Knowledge Base):</label>
+        <textarea id="knowledgeBase" class="form-textarea" rows="4" placeholder="اكتب هنا كل ما ترغب أن يعرفه الذكاء الاصطناعي: أوقات الدوام، العناوين، الأسعار، الخدمات، سياسة الحجز...">${botSettings.knowledgeBase || ''}</textarea>
+      </div>
+
+      <button type="submit" id="saveBtn" class="btn-save">💾 حفظ التعديلات وتطبيقها فوراً على الردود</button>
+      <div id="saveMsg" style="font-size: 13px; color: #34d399; margin-top: 10px; text-align: center; display: none; font-weight: 600;">✅ تم حفظ التعديلات وتحديث شخصية الذكاء الاصطناعي بنجاح!</div>
+    </form>
+  </div>
+
   <div class="logs-card">
     <div class="logs-title">
       <span>سجل المحادثات والردود الحية (${messageLogs.length})</span>
@@ -144,8 +260,22 @@ app.get('/api/status', (req, res) => {
     status: connectionStatus,
     user: connectedUser,
     qr: currentQR,
-    logsCount: messageLogs.length
+    logsCount: messageLogs.length,
+    settings: botSettings,
   });
+});
+
+app.post('/api/settings', (req, res) => {
+  const { businessName, dialect, tone, greetingMessage, knowledgeBase } = req.body;
+  saveBotSettings({
+    businessName: businessName || botSettings.businessName,
+    dialect: dialect || botSettings.dialect,
+    tone: tone || botSettings.tone,
+    greetingMessage: greetingMessage || botSettings.greetingMessage,
+    knowledgeBase: knowledgeBase !== undefined ? knowledgeBase : botSettings.knowledgeBase,
+  });
+  console.log(`✅ تم تحديث إعدادات الذكاء الاصطناعي: لهجة [${botSettings.dialect}]، نبرة [${botSettings.tone}]`);
+  res.json({ ok: true, settings: botSettings });
 });
 
 app.post('/api/logout', async (req, res) => {
@@ -179,31 +309,87 @@ app.post('/api/logout', async (req, res) => {
   res.json({ ok: true, message: 'Session cleared, new QR generating' });
 });
 
-// Intelligent AI Response Generator
+// Dialect and Knowledge-Aware Intelligent AI Response Generator
 function generateSmartReply(incomingText, senderNumber) {
   const text = incomingText.trim().toLowerCase();
+  const { businessName, dialect, tone, greetingMessage, knowledgeBase } = botSettings;
 
+  // 1. Check for Greeting
+  const greetingWords = ['مرحبا', 'مرحباً', 'سلام', 'السلام', 'الو', 'صباح الخير', 'مساء الخير', 'هلا', 'هلو', 'شلونك', 'شخبارك', 'هاي', 'hey', 'hello', 'hi'];
+  const isGreetingOnly = greetingWords.some(w => text.startsWith(w) || text === w);
+
+  if (isGreetingOnly && text.length < 30) {
+    if (greetingMessage && greetingMessage.trim()) return greetingMessage.trim();
+    if (dialect === 'iraqi') return `أهلاً وسهلاً بيك عيني! يسعدنا خدمتك عبر المساعد الذكي لـ ${businessName}. تدلل، شلون نكدر نساعدك اليوم؟`;
+    if (dialect === 'gulf') return `يا هلا ومسهلا فيك طال عمرك! يسعدنا خدمتك عبر المساعد الذكي لـ ${businessName}. أبشر، كيف نقدر نخدمك اليوم؟`;
+    if (dialect === 'egyptian') return `أهلاً بحضرتك يا فندم! منورنا في ${businessName}. تحت أمرك، إزاي نقدر نساعدك النهارده؟`;
+    if (dialect === 'shami') return `أهلاً وسهلاً بحضرتك! تكرم عينك، كيف فينا نساعدك اليوم بـ ${businessName}؟`;
+    return `أهلاً وسهلاً بحضرتك! يسعدنا خدمتكم عبر المساعد الذكي لـ ${businessName}. كيف يمكننا مساعدتكم اليوم؟`;
+  }
+
+  const kbLines = (knowledgeBase || '').split('\n').map(l => l.trim()).filter(Boolean);
+
+  // 2. Booking / Appointments
   if (text.includes('موعد') || text.includes('حجز') || text.includes('احجز')) {
-    return `أهلاً وسهلاً بحضرتك! يسعدنا خدمتك عبر المساعد الذكي لـ FlowDesk AI. مواعيدنا متاحة يومياً من الساعة 9:00 صباحاً وحتى 10:00 مساءً. يرجى إرسال اليوم والوقت المفضل لديك لتأكيد الحجز فوراً.`;
-  }
-  
-  if (text.includes('دوام') || text.includes('ساعات') || text.includes('اوقات') || text.includes('متى')) {
-    return `أهلاً بك! ساعات العمل الرسمية يومياً من الساعة 9:00 صباحاً وحتى 10:00 مساءً طوال أيام الأسبوع. هل تود الاستفسار عن خدمة معينة أو حجز موعد؟`;
-  }
-
-  if (text.includes('سعر') || text.includes('اسعار') || text.includes('تكلفة') || text.includes('بكم')) {
-    return `أهلاً بحضرتك! أسعار الخدمات والاستشارات تعتمد على نوع الطلب المحدد. تفضل بتوضيح نوع الخدمة أو طلبك وسنقوم بتزويدك بالتفاصيل الدقيقة فوراً.`;
-  }
-
-  if (text.includes('مكان') || text.includes('موقع') || text.includes('عنوان') || text.includes('وين')) {
-    return `أهلاً وسهلاً! فرعنا الرئيسي مفتوح لاستقبالكم، كما نوفر خدمات الدعم والمحادثات الإلكترونية عبر المنصة على مدار الساعة. هل تود حجز زيارة حضورية؟`;
+    const bookingLine = kbLines.find(l => l.includes('موعد') || l.includes('حجز')) || '';
+    if (dialect === 'iraqi') {
+      return `أهلاً بيك عيني! يسعدنا نثبتلك موعدك عبر المساعد الذكي لـ ${businessName}.${bookingLine ? '\n\n📌 ' + bookingLine : ''}\n\nتحب نثبتلك موعد اليوم لو باجر، وبأي وقت يناسبك؟ تدلل.`;
+    }
+    if (dialect === 'gulf') {
+      return `يا هلا فيك طال عمرك! أبشر يسعدنا حجز موعدك لدى ${businessName}.${bookingLine ? '\n\n📌 ' + bookingLine : ''}\n\nتفضل بإرسال اليوم والوقت المناسب لحضرتك لتأكيد الحجز فوراً.`;
+    }
+    return `أهلاً وسهلاً بحضرتك! يسعدنا خدمتكم وحجز موعدكم لدى ${businessName}.${bookingLine ? '\n\n📌 ' + bookingLine : ''}\n\nيرجى إرسال اليوم والوقت المفضل لديك لتأكيد الحجز فوراً.`;
   }
 
+  // 3. Working Hours / Timing
+  if (text.includes('دوام') || text.includes('ساعات') || text.includes('اوقات') || text.includes('متى') || text.includes('وقت')) {
+    const hoursLine = kbLines.find(l => l.includes('دوام') || l.includes('ساعات') || l.includes('اوقات') || l.includes('العمل')) || 'مواعيد العمل يومياً من الساعة 9:00 صباحاً وحتى 10:00 مساءً طوال أيام الأسبوع.';
+    if (dialect === 'iraqi') {
+      return `أهلاً عيني! ${hoursLine}\nأي وكت تحب تشرفنا أو تحجز موعد أهلاً وسهلاً بيك وتدلل.`;
+    }
+    if (dialect === 'gulf') {
+      return `يا هلا ومرحبا طال عمرك! ${hoursLine}\nنسعد بزيارتك أو حجز موعدك بأي وقت.`;
+    }
+    return `أهلاً بحضرتك! ${hoursLine}\nهل تود الاستفسار عن خدمة معينة أو حجز موعد؟`;
+  }
+
+  // 4. Prices / Cost
+  if (text.includes('سعر') || text.includes('اسعار') || text.includes('تكلفة') || text.includes('بكم') || text.includes('بيش')) {
+    const priceLine = kbLines.find(l => l.includes('سعر') || l.includes('اسعار') || l.includes('كشف') || l.includes('دينار') || l.includes('ريال') || l.includes('دولار')) || '';
+    if (dialect === 'iraqi') {
+      return `أهلاً عيني! بخصوص الأسعار:${priceLine ? '\n\n💰 ' + priceLine : '\nتعتمد الأسعار على نوع الخدمة بدقة.'}\nتفضل وضح الخدمة المطلوبة وتدلل نجاوبك فوراً.`;
+    }
+    if (dialect === 'gulf') {
+      return `يا هلا طال عمرك! بخصوص الأسعار:${priceLine ? '\n\n💰 ' + priceLine : '\nتختلف الأسعار باختلاف الخدمة المطلوبة.'}\nتفضل بتوضيح طلبك وأبشر باللي يسرك.`;
+    }
+    return `أهلاً بحضرتك! تفاصيل الأسعار:${priceLine ? '\n\n💰 ' + priceLine : '\nتعتمد الأسعار على نوع الخدمة المحددة.'}\nتفضل بتوضيح نوع الخدمة المطلوبة وسنزودك بالتفاصيل فوراً.`;
+  }
+
+  // 5. Location / Address
+  if (text.includes('مكان') || text.includes('موقع') || text.includes('عنوان') || text.includes('وين') || text.includes('وينكم')) {
+    const locLine = kbLines.find(l => l.includes('مكان') || l.includes('موقع') || l.includes('عنوان') || l.includes('فرع')) || 'فرعنا الرئيسي متاح لاستقبالكم طوال أيام الأسبوع.';
+    if (dialect === 'iraqi') {
+      return `أهلاً بيك عيني! ${locLine}\nتحب نثبتلك موعد زيارة حضورية؟ تدلل.`;
+    }
+    return `أهلاً وسهلاً بحضرتك! ${locLine}\nهل تود حجز زيارة حضورية؟`;
+  }
+
+  // 6. Human Escalation / Complaint
   if (text.includes('موظف') || text.includes('انسان') || text.includes('شخص') || text.includes('شكوى')) {
-    return `تم إشعار الإدارة فوراً بطلبك للتحدث مع موظف، وسيقوم أحد الزملاء بمتابعة محادثتك مباشرة من هاتفي في أقرب وقت. شكراً لصبرك!`;
+    if (dialect === 'iraqi') {
+      return `صار عيني وتدلل، تم إشعار الإدارة فوراً وراح يجاوبك موظف الدعم بأسرع وكت. شكراً لصبرك!`;
+    }
+    return `تم إشعار فريق خدمة العملاء فوراً بطلبك للتحدث مع موظف، وسيقوم أحد الزملاء بمتابعة محادثتك مباشرة في أقرب وقت. شكراً لصبرك!`;
   }
 
-  return `مرحباً بك! أنا المساعد الذكي الآلي لـ FlowDesk AI المربوط بهذا الرقم. استلمت رسالتك ("${incomingText}")، كيف يمكنني مساعدتك اليوم بخصوص الاستفسارات أو حجز المواعيد؟`;
+  // 7. General Fallback
+  if (dialect === 'iraqi') {
+    return `أهلاً وسهلاً بيك عيني! استلمت رسالتك ("${incomingText}"). أنا المساعد الذكي لـ ${businessName}.\n\nشلون نكدر نساعدك اليوم بخصوص الاستفسارات أو حجز المواعيد؟ تدلل.`;
+  }
+  if (dialect === 'gulf') {
+    return `يا هلا ومسهلا فيك طال عمرك! استلمت رسالتك ("${incomingText}"). أنا المساعد الذكي لـ ${businessName}.\n\nكيف نقدر نخدمك اليوم بخصوص المواعيد أو الاستفسارات؟ أبشر.`;
+  }
+  return `مرحباً بك! أنا المساعد الذكي لـ ${businessName}. استلمت رسالتك ("${incomingText}")، كيف يمكنني مساعدتك اليوم بخصوص الاستفسارات أو حجز المواعيد؟`;
 }
 
 async function transcribeAudio(buffer) {

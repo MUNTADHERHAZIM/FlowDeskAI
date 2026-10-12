@@ -8,7 +8,12 @@ class ChannelType(models.TextChoices):
     EMAIL = "email", "البريد الإلكتروني (Email)"
     TELEGRAM = "telegram", "تيليجرام (Telegram)"
     WHATSAPP = "whatsapp", "واتساب للأعمال (WhatsApp Business)"
+    INSTAGRAM = "instagram", "إنستغرام (Instagram DM)"
+    MESSENGER = "messenger", "فيسبوك ماسنجر (Facebook Messenger)"
+    SMS = "sms", "الرسائل القصيرة (SMS Gateway)"
+    TIKTOK = "tiktok", "تيك توك (TikTok DM)"
     VOICE = "voice", "الصوت والبريد الصوتي (Voice)"
+
 
 
 class ChannelConnection(TenantAwareModel):

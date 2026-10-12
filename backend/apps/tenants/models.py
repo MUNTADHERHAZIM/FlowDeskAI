@@ -15,7 +15,7 @@ class Tenant(models.Model):
     name = models.CharField("اسم المؤسسة", max_length=200)
     slug = models.SlugField("المعرف الفريد (Slug)", max_length=100, unique=True, db_index=True)
     status = models.CharField("الحالة", max_length=20, choices=TenantStatus.choices, default=TenantStatus.TRIAL)
-    timezone = models.CharField("المنطقة الزمنية", max_length=50, default="Asia/Riyadh")
+    timezone = models.CharField("المنطقة الزمنية", max_length=50, default="Asia/Baghdad")
     settings = models.JSONField("إعدادات المؤسسة", default=dict, blank=True)
     created_at = models.DateTimeField("تاريخ الإنشاء", auto_now_add=True)
     updated_at = models.DateTimeField("تاريخ التحديث", auto_now=True)

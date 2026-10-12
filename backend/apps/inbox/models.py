@@ -23,7 +23,22 @@ class Conversation(TenantAwareModel):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_conversations", verbose_name="الموظف المسؤول"
     )
     last_message_at = models.DateTimeField("تاريخ آخر رسالة", auto_now=True)
+    is_bot_paused = models.BooleanField("إيقاف الرد الآلي مؤقتاً (استلام الموظف)", default=False)
+    bot_paused_until = models.DateTimeField("معلق حتى", null=True, blank=True)
+    bot_paused_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="paused_conversations", verbose_name="الموظف المستلم"
+    )
     metadata = models.JSONField("بيانات إضافية", default=dict, blank=True)
+
+    def is_bot_active(self):
+        from django.utils import timezone
+        if not self.is_bot_paused:
+            return True
+        if self.bot_paused_until and timezone.now() > self.bot_paused_until:
+            self.is_bot_paused = False
+            self.save(update_fields=["is_bot_paused"])
+            return True
+        return False
 
     class Meta:
         verbose_name = "محادثة"

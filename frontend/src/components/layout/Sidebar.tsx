@@ -98,21 +98,23 @@ export function Sidebar() {
         })}
       </div>
 
-      {/* Subscription Card */}
+      {/* Subscription Card & Developer Attribution */}
       <div className="p-4 m-3 rounded-2xl bg-gradient-to-b from-gray-800/40 to-indigo-950/20 border border-indigo-500/20 relative overflow-hidden">
         <div className="flex items-center gap-2 mb-2 text-indigo-300 text-xs font-semibold">
           <Sparkles className="w-3.5 h-3.5" />
           <span>محرك الذكاء والـ MVP</span>
         </div>
-        <p className="text-[11px] text-gray-400 leading-relaxed mb-3">
-          المنصة متصلة بـ 4 قنوات (Web, WhatsApp, Telegram, Email).
+        <p className="text-[11px] text-gray-400 leading-relaxed mb-2">
+          المنصة متصلة بـ 5 قنوات (WhatsApp, Telegram, Web, Email, Iraq SMS).
         </p>
         <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-500 to-cyan-400 h-1.5 rounded-full w-3/4"></div>
+          <div className="bg-gradient-to-r from-indigo-500 to-cyan-400 h-1.5 rounded-full w-4/5"></div>
         </div>
-        <div className="flex justify-between items-center text-[10px] text-gray-400 mt-2">
-          <span>الاستهلاك</span>
-          <span className="font-bold text-gray-200">75%</span>
+
+        {/* Developer Attribution */}
+        <div className="mt-3 pt-2.5 border-t border-gray-800/80 flex items-center justify-between text-[10px]">
+          <span className="text-gray-400">المطور:</span>
+          <span className="font-bold text-cyan-300">منتظر حازم | البصرة 🇮🇶</span>
         </div>
       </div>
     </aside>

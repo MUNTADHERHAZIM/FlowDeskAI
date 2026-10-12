@@ -19,14 +19,18 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
+        from rest_framework_simplejwt.tokens import RefreshToken
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         user_data = UserSerializer(user).data
+        refresh = RefreshToken.for_user(user)
         return Response(
             {
                 "message": "تم إنشاء الحساب والمؤسسة بنجاح.",
                 "user": user_data,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
             },
             status=status.HTTP_201_CREATED,
         )

@@ -17,65 +17,117 @@ import {
   Mail,
   Send,
   Phone,
+  Workflow,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardPage() {
   const { user, activeTenant } = useAuth();
+  const isDemo = activeTenant?.id === "demo-tenant-101" || activeTenant?.slug === "basra-medical-center";
 
-  const kpis = [
-    {
-      title: "المحادثات النشطة الموحدة",
-      value: "142",
-      subtext: "+24% عن الأسبوع الماضي",
-      icon: MessageSquare,
-      color: "from-blue-600 to-indigo-600",
-      border: "border-blue-500/20",
-    },
-    {
-      title: "مواعيد اليوم المؤكدة",
-      value: "28",
-      subtext: "خالية من التعارضات (0 تعارض)",
-      icon: Calendar,
-      color: "from-emerald-600 to-teal-600",
-      border: "border-emerald-500/20",
-    },
-    {
-      title: "عمليات الأتمتة المكتملة",
-      value: "1,894",
-      subtext: "معدل نجاح 99.7%",
-      icon: Zap,
-      color: "from-amber-600 to-orange-600",
-      border: "border-amber-500/20",
-    },
-    {
-      title: "ردود الذكاء الاصطناعي (RAG)",
-      value: "840",
-      subtext: "بدقة مدعمة بمستندات المؤسسة",
-      icon: Bot,
-      color: "from-purple-600 to-pink-600",
-      border: "border-purple-500/20",
-    },
-  ];
+  const kpis = isDemo
+    ? [
+        {
+          title: "المحادثات النشطة الموحدة",
+          value: "142",
+          subtext: "+24% عن الأسبوع الماضي",
+          icon: MessageSquare,
+          color: "from-blue-600 to-indigo-600",
+          border: "border-blue-500/20",
+        },
+        {
+          title: "مواعيد اليوم المؤكدة",
+          value: "28",
+          subtext: "خالية من التعارضات (0 تعارض)",
+          icon: Calendar,
+          color: "from-emerald-600 to-teal-600",
+          border: "border-emerald-500/20",
+        },
+        {
+          title: "عمليات الأتمتة المكتملة",
+          value: "1,894",
+          subtext: "معدل نجاح 99.7%",
+          icon: Zap,
+          color: "from-amber-600 to-orange-600",
+          border: "border-amber-500/20",
+        },
+        {
+          title: "ردود الذكاء الاصطناعي (RAG)",
+          value: "840",
+          subtext: "بدقة مدعمة بمستندات المؤسسة",
+          icon: Bot,
+          color: "from-purple-600 to-pink-600",
+          border: "border-purple-500/20",
+        },
+      ]
+    : [
+        {
+          title: "المحادثات النشطة الموحدة",
+          value: "0",
+          subtext: "بانتظار ربط قنوات الاتصال",
+          icon: MessageSquare,
+          color: "from-blue-600 to-indigo-600",
+          border: "border-blue-500/20",
+        },
+        {
+          title: "مواعيد اليوم المؤكدة",
+          value: "0",
+          subtext: "0 تعارض (Atomic Guard)",
+          icon: Calendar,
+          color: "from-emerald-600 to-teal-600",
+          border: "border-emerald-500/20",
+        },
+        {
+          title: "عمليات الأتمتة المكتملة",
+          value: "0",
+          subtext: "جاهز لتشغيل المسارات",
+          icon: Zap,
+          color: "from-amber-600 to-orange-600",
+          border: "border-amber-500/20",
+        },
+        {
+          title: "ردود الذكاء الاصطناعي (RAG)",
+          value: "0",
+          subtext: "مساحة عمل خاصة ومعزولة",
+          icon: Bot,
+          color: "from-purple-600 to-pink-600",
+          border: "border-purple-500/20",
+        },
+      ];
 
-  const channels = [
-    { name: "واتساب للأعمال (WhatsApp Cloud API)", count: "68 محادثة", status: "متصل ونشط", icon: Phone, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-    { name: "تطبيق تيليجرام (Telegram Bot)", count: "42 محادثة", status: "متصل ونشط", icon: Send, color: "text-sky-400 bg-sky-500/10 border-sky-500/20" },
-    { name: "محادثات الموقع (Web Chat Live)", count: "21 محادثة", status: "متصل ونشط", icon: MessageSquare, color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" },
-    { name: "البريد الإلكتروني (Support Email)", count: "11 محادثة", status: "متصل ونشط", icon: Mail, color: "text-rose-400 bg-rose-500/10 border-rose-500/20" },
-  ];
+  const channels = isDemo
+    ? [
+        { name: "واتساب للأعمال (WhatsApp Cloud API)", count: "68 محادثة", status: "متصل ونشط", icon: Phone, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+        { name: "تطبيق تيليجرام (Telegram Bot)", count: "42 محادثة", status: "متصل ونشط", icon: Send, color: "text-sky-400 bg-sky-500/10 border-sky-500/20" },
+        { name: "محادثات الموقع (Web Chat Live)", count: "21 محادثة", status: "متصل ونشط", icon: MessageSquare, color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" },
+        { name: "البريد الإلكتروني (Support Email)", count: "11 محادثة", status: "متصل ونشط", icon: Mail, color: "text-rose-400 bg-rose-500/10 border-rose-500/20" },
+      ]
+    : [
+        { name: "واتساب للأعمال (WhatsApp Cloud API)", count: "0 محادثة", status: "جاهز للربط", icon: Phone, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+        { name: "تطبيق تيليجرام (Telegram Bot)", count: "0 محادثة", status: "جاهز للربط", icon: Send, color: "text-sky-400 bg-sky-500/10 border-sky-500/20" },
+        { name: "محادثات الموقع (Web Chat Live)", count: "0 محادثة", status: "جاهز للتضمين", icon: MessageSquare, color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" },
+        { name: "البريد الإلكتروني (Support Email)", count: "0 محادثة", status: "جاهز للإعداد", icon: Mail, color: "text-rose-400 bg-rose-500/10 border-rose-500/20" },
+      ];
 
-  const upcomingAppointments = [
-    { client: "سارة عبدالله المنصور", service: "استشارة طبية أولية", time: "11:30 ص", resource: "د. خالد السالم", room: "عيادة 2" },
-    { client: "م. فهد بن عبدالعزيز", service: "متابعة دورية", time: "12:15 م", resource: "د. ريم الشمري", room: "عيادة 1" },
-    { client: "نورة محمد القحطاني", service: "فحص وتشخيص متخصص", time: "01:00 م", resource: "د. خالد السالم", room: "عيادة 2" },
-  ];
+  const upcomingAppointments = isDemo
+    ? [
+        { client: "سارة عبدالله المنصور", service: "استشارة طبية أولية", time: "11:30 ص", resource: "د. خالد السالم", room: "عيادة 2" },
+        { client: "م. فهد بن عبدالعزيز", service: "متابعة دورية", time: "12:15 م", resource: "د. ريم الشمري", room: "عيادة 1" },
+        { client: "نورة محمد القحطاني", service: "فحص وتشخيص متخصص", time: "01:00 م", resource: "د. خالد السالم", room: "عيادة 2" },
+      ]
+    : [];
 
-  const recentEvents = [
-    { title: "تم تأكيد حجز موعد تلقائياً", channel: "WhatsApp", time: "منذ دقيقتين", state: "نجاح الأتمتة" },
-    { title: "استخراج حقول تذكرة عبر الذكاء الاصطناعي", channel: "Telegram", time: "منذ 6 دقائق", state: "RAG Engine" },
-    { title: "عميل جديد انضم عبر محادثات الموقع", channel: "WebChat", time: "منذ 14 دقيقة", state: "جديد" },
-  ];
+  const recentEvents = isDemo
+    ? [
+        { title: "تم تأكيد حجز موعد تلقائياً", channel: "WhatsApp", time: "منذ دقيقتين", state: "نجاح الأتمتة" },
+        { title: "استخراج حقول تذكرة عبر الذكاء الاصطناعي", channel: "Telegram", time: "منذ 6 دقائق", state: "RAG Engine" },
+        { title: "عميل جديد انضم عبر محادثات الموقع", channel: "WebChat", time: "منذ 14 دقيقة", state: "جديد" },
+      ]
+    : [
+        { title: "تم إنشاء مساحة عمل معزولة ومحمية", channel: "FlowDesk Core", time: "الآن", state: "عزل تام 100%" },
+        { title: "قاعدة بيانات PostgreSQL متعددة المستأجرين", channel: "Multi-Tenancy", time: "الآن", state: "نشط ومحمي" },
+      ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -138,6 +190,36 @@ export default function DashboardPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Featured n8n-like Visual Workflow Banner */}
+      <div className="relative rounded-2xl p-6 bg-gradient-to-r from-indigo-950/60 via-[#131c33] to-[#0c1322] border border-indigo-500/30 overflow-hidden shadow-xl">
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>محرّك مسارات العمل المرئي الشبيه بـ n8n (Visual Node Engine)</span>
+              <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30">جديد ومفعّل</span>
+            </div>
+            <h2 className="text-lg md:text-xl font-bold text-white">
+              قم ببناء واختبار تدفقات الذكاء الاصطناعي والحجز الآلي عبر لوحة العقد التفاعلية
+            </h2>
+            <p className="text-gray-300 text-xs leading-relaxed">
+              محفزات الويب هوك (WhatsApp Webhook)، استخراج النوايا عبر الذكاء الاصطناعي (AI RAG Intent)، قفل التوافر الذري في PostgreSQL، وإرسال الرسائل الفورية مع وضع التجربة والمحاكاة المباشرة (Dry Run) ومفتش فحص العقد (Node Inspector).
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              href="/workflows"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 hover:scale-105"
+            >
+              <Workflow className="w-4 h-4" />
+              <span>فتح استوديو الورك فلو (n8n Canvas)</span>
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Middle Grid: Channels & Upcoming Appointments */}
@@ -214,21 +296,29 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800/60">
-                {upcomingAppointments.map((app, idx) => (
-                  <tr key={idx} className="hover:bg-gray-800/30 transition-all">
-                    <td className="py-3 font-bold text-gray-200">{app.client}</td>
-                    <td className="py-3 text-gray-300">{app.service}</td>
-                    <td className="py-3 font-semibold text-emerald-400">{app.time}</td>
-                    <td className="py-3 text-gray-300">{app.resource}</td>
-                    <td className="py-3 text-gray-400">{app.room}</td>
-                    <td className="py-3">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>مؤكد</span>
-                      </span>
+                {upcomingAppointments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-gray-500 text-xs">
+                      لا توجد مواعيد مجدولة اليوم في مساحة عملك — يمكنك حجز موعد جديد من صفحة التقويم.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  upcomingAppointments.map((app, idx) => (
+                    <tr key={idx} className="hover:bg-gray-800/30 transition-all">
+                      <td className="py-3 font-bold text-gray-200">{app.client}</td>
+                      <td className="py-3 text-gray-300">{app.service}</td>
+                      <td className="py-3 font-semibold text-emerald-400">{app.time}</td>
+                      <td className="py-3 text-gray-300">{app.resource}</td>
+                      <td className="py-3 text-gray-400">{app.room}</td>
+                      <td className="py-3">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>مؤكد</span>
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

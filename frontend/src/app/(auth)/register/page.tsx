@@ -2,23 +2,28 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Zap, Lock, Mail, Building2, User, ArrowLeft } from "lucide-react";
+import { Zap, Lock, Mail, Building2, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [orgName, setOrgName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMsg("");
     setLoading(true);
 
     const res = await apiClient("/auth/register/", {
@@ -35,10 +40,19 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (res.data) {
-      alert("تم إنشاء الحساب والمؤسسة بنجاح! يمكنك الآن تسجيل الدخول.");
-      router.push("/login");
+      setSuccessMsg("تم إنشاء الحساب والمؤسسة بنجاح! جاري تحويلك إلى لوحة التحكم...");
+      if (res.data.access && res.data.user) {
+        login(res.data.access, res.data.refresh || "", res.data.user);
+        setTimeout(() => {
+          router.push("/");
+        }, 800);
+      } else {
+        setTimeout(() => {
+          router.push("/login");
+        }, 1200);
+      }
     } else {
-      setError(res.error || "تعذر إكمال التسجيل، يرجى التحقق من المدخلات.");
+      setError(res.error || "تعذر إكمال التسجيل، يرجى التحقق من صحة البيانات المدخلة.");
     }
   };
 
@@ -54,6 +68,13 @@ export default function RegisterPage() {
           <h1 className="text-2xl font-black text-white tracking-tight">إنشاء حساب ومؤسسة جديدة</h1>
           <p className="text-gray-400 text-xs mt-1">ابدأ مساحة عملك المستقلة على FlowDesk AI</p>
         </div>
+
+        {successMsg && (
+          <div className="mb-5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs text-center font-medium flex items-center justify-center gap-2 animate-in fade-in">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span>{successMsg}</span>
+          </div>
+        )}
 
         {error && (
           <div className="mb-5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-center font-medium">
@@ -122,14 +143,22 @@ export default function RegisterPage() {
             <div className="relative">
               <Lock className="w-4 h-4 text-gray-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-gray-900 border border-gray-800 rounded-xl pr-10 pl-3.5 py-2.5 text-white focus:outline-none focus:border-indigo-500 text-xs font-mono"
+                className="w-full bg-gray-900 border border-gray-800 rounded-xl pr-10 pl-10 py-2.5 text-white focus:outline-none focus:border-indigo-500 text-xs font-mono"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 rounded-lg transition-colors"
+                title={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4 text-indigo-400" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 

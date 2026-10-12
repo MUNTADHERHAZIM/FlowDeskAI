@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Zap, Lock, Mail, ArrowLeft, Shield } from "lucide-react";
+import { Zap, Lock, Mail, ArrowLeft, Shield, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -12,6 +12,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -76,13 +77,21 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="w-4 h-4 text-gray-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-gray-900 border border-gray-800 rounded-xl pr-10 pl-3.5 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 text-xs font-mono"
+                className="w-full bg-gray-900 border border-gray-800 rounded-xl pr-10 pl-10 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 text-xs font-mono"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 rounded-lg transition-colors"
+                title={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4 text-indigo-400" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 

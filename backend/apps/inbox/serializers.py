@@ -35,6 +35,8 @@ class ConversationSerializer(serializers.ModelSerializer):
             "channel_connection",
             "status",
             "assigned_to",
+            "is_bot_paused",
+            "bot_paused_until",
             "last_message_at",
             "created_at",
             "last_message",

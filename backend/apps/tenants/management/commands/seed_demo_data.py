@@ -12,17 +12,18 @@ from apps.ai.models import KnowledgeDocument, KnowledgeChunk
 
 
 class Command(BaseCommand):
-    help = "Seeds initial demo data for FlowDesk AI multi-tenant platform"
+    help = "Seeds initial demo data for FlowDesk AI multi-tenant platform (Iraq - Basra Edition)"
 
     def handle(self, *args, **options):
-        self.stdout.write("Beggining database seeding for FlowDesk AI...")
+        self.stdout.write("Beggining database seeding for FlowDesk AI (Iraq / Basra)...")
 
-        # 1. Create Superuser / Admin
+        # 1. Create Superuser / Developer Account (Muntadher Hazim - Basra, Iraq)
         admin_user, created = User.objects.get_or_create(
-            email="admin@flowdesk.ai",
+            email="muntadher@flowdesk.iq",
             defaults={
-                "first_name": "عبدالرحمن",
-                "last_name": "الغامدي",
+                "first_name": "منتظر",
+                "last_name": "حازم",
+                "phone_number": "+9647801234567",
                 "is_staff": True,
                 "is_superuser": True,
             }
@@ -30,24 +31,24 @@ class Command(BaseCommand):
         if created:
             admin_user.set_password("AdminPass123!")
             admin_user.save()
-            self.stdout.write(self.style.SUCCESS("Created admin user: admin@flowdesk.ai"))
+            self.stdout.write(self.style.SUCCESS("Created developer account: muntadher@flowdesk.iq (منتظر حازم)"))
 
-        # 2. Create Tenant: عيادة النخبة الطبية
+        # 2. Create Tenant: مركز البصرة الطبي التخصصي
         clinic_tenant, _ = Tenant.objects.get_or_create(
-            slug="elite-clinic",
+            slug="basra-medical-center",
             defaults={
-                "name": "عيادة النخبة الطبية",
-                "timezone": "Asia/Riyadh",
+                "name": "مركز البصرة الطبي التخصصي",
+                "timezone": "Asia/Baghdad",
                 "status": "active",
             }
         )
 
-        # 3. Create Tenant: مجموعة العدالة للمحاماة
+        # 3. Create Tenant: مجموعة الرافدين القانونية - البصرة
         law_tenant, _ = Tenant.objects.get_or_create(
-            slug="justice-law",
+            slug="alrafidain-law-basra",
             defaults={
-                "name": "مجموعة العدالة القانونية",
-                "timezone": "Asia/Riyadh",
+                "name": "مجموعة الرافدين القانونية - البصرة",
+                "timezone": "Asia/Baghdad",
                 "status": "active",
             }
         )
@@ -64,40 +65,40 @@ class Command(BaseCommand):
             defaults={"role": MembershipRole.ADMIN, "is_default": False}
         )
 
-        # 5. Omnichannel Connections
+        # 5. Omnichannel Connections (Iraq)
         whatsapp_conn, _ = ChannelConnection.objects.get_or_create(
             tenant=clinic_tenant,
             channel_type=ChannelType.WHATSAPP,
             defaults={
-                "name": "رقم واتساب العيادة الرسمي",
+                "name": "واتساب المركز الرسمي (+964 780 123 4567)",
                 "is_active": True,
-                "webhook_secret": "whsec_flowdesk_whatsapp_demo_2026",
+                "webhook_secret": "whsec_flowdesk_iraq_whatsapp_2026",
             }
         )
         telegram_conn, _ = ChannelConnection.objects.get_or_create(
             tenant=clinic_tenant,
             channel_type=ChannelType.TELEGRAM,
             defaults={
-                "name": "بوت تيليجرام حجز العيادة",
+                "name": "بوت تيليجرام حجز عيادة البصرة (@BasraClinicBot)",
                 "is_active": True,
             }
         )
 
-        # 6. Contacts
+        # 6. Contacts (Iraq)
         contact_sara, _ = Contact.objects.get_or_create(
             tenant=clinic_tenant,
-            email="sara.m@example.com",
+            email="sara.basra@example.com",
             defaults={
-                "name": "سارة عبدالله المنصور",
-                "phone_number": "+966501234567",
-                "tags": ["عميل VIP", "أسنان"],
+                "name": "سارة علي التميمي (البصرة)",
+                "phone_number": "+9647805551234",
+                "tags": ["عميل VIP", "البصرة - الجزائر"],
             }
         )
         ExternalIdentity.objects.get_or_create(
             tenant=clinic_tenant,
             contact=contact_sara,
             channel_type="whatsapp",
-            defaults={"external_id": "+966501234567"}
+            defaults={"external_id": "+9647805551234"}
         )
 
         # 7. Inbox Conversations & Messages
@@ -110,29 +111,29 @@ class Command(BaseCommand):
         Message.objects.get_or_create(
             tenant=clinic_tenant,
             conversation=conv,
-            text_content="مرحباً بكم، أود الاستفسار عن المواعيد المتاحة لدى د. خالد السالم ليوم الثلاثاء القادم في الفترة الصباحية؟",
+            text_content="السلام عليكم، أود حجز موعد فحص واستشارة لدى الدكتور أحمد في مركز البصرة الطبي ليوم غد؟",
             defaults={
                 "direction": MessageDirection.INBOUND,
                 "message_type": MessageType.TEXT,
                 "delivery_status": DeliveryStatus.DELIVERED,
-                "provider_message_id": "wamid_demo_101",
+                "provider_message_id": "wamid_iq_demo_101",
             }
         )
 
-        # 8. Services & Resources
+        # 8. Services & Resources (Prices in Iraqi Dinar - IQD)
         service_consultation, _ = Service.objects.get_or_create(
             tenant=clinic_tenant,
-            name="استشارة طبية أولية",
-            defaults={"duration_minutes": 30, "price": 250.00, "is_active": True}
+            name="كشف واستشارة طبية تخصصية",
+            defaults={"duration_minutes": 30, "price": 35000.00, "is_active": True}  # 35,000 د.ع
         )
-        dr_khaled, _ = Resource.objects.get_or_create(
+        dr_ahmed, _ = Resource.objects.get_or_create(
             tenant=clinic_tenant,
-            name="د. خالد السالم",
+            name="د. أحمد السعدون (استشاري)",
             defaults={"resource_type": ResourceType.STAFF, "is_active": True}
         )
         clinic_room, _ = Resource.objects.get_or_create(
             tenant=clinic_tenant,
-            name="عيادة 2 - الدور الأرضي",
+            name="عيادة 1 - جناح البصرة",
             defaults={"resource_type": ResourceType.ROOM, "is_active": True}
         )
 
@@ -146,21 +147,21 @@ class Command(BaseCommand):
                 "start_time": appt_time,
                 "end_time": appt_time + timedelta(minutes=30),
                 "status": "confirmed",
-                "notes": "تم الحجز تلقائياً عبر محرك الأتمتة الموحد",
+                "notes": "حجز موعد مؤكد عبر محرك الأتمتة الموحد - البصرة",
             }
         )
         if appt_created:
-            AppointmentResource.objects.create(tenant=clinic_tenant, appointment=appt, resource=dr_khaled)
+            AppointmentResource.objects.create(tenant=clinic_tenant, appointment=appt, resource=dr_ahmed)
             AppointmentResource.objects.create(tenant=clinic_tenant, appointment=appt, resource=clinic_room)
 
-        # 10. Visual Workflow
+        # 10. Visual Workflow (n8n-like Canvas)
         wf, _ = Workflow.objects.get_or_create(
             tenant=clinic_tenant,
-            name="أتمتة حجز المواعيد عبر واتساب والذكاء الاصطناعي",
+            name="أتمتة حجز واستفسارات واتساب (العراق)",
             defaults={
                 "trigger_type": TriggerType.MESSAGE_RECEIVED,
                 "is_active": True,
-                "description": "تدفق يستقبل رسالة العميل، يستخرج نية الحجز، يتحقق من التوافر ذرياً، ويؤكد الحجز.",
+                "description": "تدفق يستقبل رسائل الأرقام العراقية، يستخرج نية الحجز، يتحقق من التوافر ذرياً، ويؤكد الحجز.",
             }
         )
         WorkflowVersion.objects.get_or_create(
@@ -171,10 +172,10 @@ class Command(BaseCommand):
                 "is_published": True,
                 "definition": {
                     "nodes": [
-                        {"id": "node-1", "type": "trigger", "label": "استلام رسالة واتساب"},
-                        {"id": "node-2", "type": "ai", "label": "استخراج موعد وخدمة بالـ AI"},
-                        {"id": "node-3", "type": "logic", "label": "فحص التوافر الذري في التقويم"},
-                        {"id": "node-4", "type": "action", "label": "تأكيد الحجز وإرسال رد العميل"},
+                        {"id": "node-1", "type": "trigger", "label": "استقبال رسالة واتساب (+964)"},
+                        {"id": "node-2", "type": "ai", "label": "فهم الطلب واستخراج الموعد"},
+                        {"id": "node-3", "type": "logic", "label": "فحص جدول د. أحمد السعدون ذرياً"},
+                        {"id": "node-4", "type": "action", "label": "تأكيد الحجز وإرسال تفاصيل العيادة بالبصرة"},
                     ],
                     "edges": [
                         {"source": "node-1", "target": "node-2"},
@@ -185,13 +186,13 @@ class Command(BaseCommand):
             }
         )
 
-        # 11. Knowledge Base Document
+        # 11. Knowledge Base Document (Iraq / Basra Clinic)
         doc, _ = KnowledgeDocument.objects.get_or_create(
             tenant=clinic_tenant,
-            title="دليل خدمات العيادة وأوقات العمل الرسمية 2026",
+            title="دليل خدمات مركز البصرة الطبي التخصصي وأوقات العمل 2026",
             defaults={
                 "source_type": "text",
-                "raw_content": "تعمل عيادة النخبة الطبية يومياً من 9:00 ص حتى 9:00 م عدا الجمعة. الاستشارات الأولية مدتها 30 دقيقة ورسومها 250 ريال.",
+                "raw_content": "مركز البصرة الطبي التخصصي يقع في البصرة - منطقة الجزائر. يفتح يومياً من 9:00 صباحاً حتى 9:00 مساءً ما عدا الجمعة. أجور الاستشارة التخصصية 35,000 دينار عراقي.",
                 "is_active": True,
             }
         )
@@ -200,8 +201,8 @@ class Command(BaseCommand):
             document=doc,
             chunk_index=0,
             defaults={
-                "content": "مواعيد عمل عيادة النخبة: السبت إلى الخميس 9 ص - 9 م. الجمعة مغلق. رسوم الاستشارة 250 ريال.",
+                "content": "موقع المركز: البصرة - الجزائر. ساعات العمل: 9:00 ص - 9:00 م. أجور الفحص: 35,000 د.ع. أرقام الحجز: +964 780 123 4567.",
             }
         )
 
-        self.stdout.write(self.style.SUCCESS("FlowDesk AI demo database successfully seeded!"))
+        self.stdout.write(self.style.SUCCESS("FlowDesk AI database successfully seeded for Iraq (Basra)!"))

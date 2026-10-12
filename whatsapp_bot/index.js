@@ -90,16 +90,95 @@ app.get('/', (req, res) => {
     .btn-save:hover { background: #1d4ed8; filter: brightness(1.1); }
   </style>
   <script>
-    let status = "${connectionStatus}";
+    let currentStatus = "${connectionStatus}";
+    let currentQR = "${currentQR}";
+    let lastLogsCount = ${messageLogs.length};
+
+    // Smooth polling: NEVER reload entire page on QR rotation or typing!
     setInterval(async () => {
       try {
         const res = await fetch('/api/status');
         const data = await res.json();
-        if (data.status !== status || (data.status === 'qr_ready' && data.qr !== "${currentQR}") || data.logsCount !== ${messageLogs.length}) {
+
+        // 1. Only reload if connection status itself transitioned (e.g. from qr_ready to connected)
+        if (data.status !== currentStatus) {
           location.reload();
+          return;
+        }
+
+        // 2. Smoothly update QR code in-place WITHOUT page refresh!
+        if (data.status === 'qr_ready' && data.qr && data.qr !== currentQR && data.qrDataUrl) {
+          currentQR = data.qr;
+          const qrImg = document.getElementById('qrImage');
+          if (qrImg) qrImg.src = data.qrDataUrl;
+        }
+
+        // 3. Smoothly update logs if changed, without reloading the page or losing user inputs
+        if (data.logsCount !== lastLogsCount && data.logs) {
+          lastLogsCount = data.logsCount;
+          const logsContainer = document.getElementById('logsContainer');
+          if (logsContainer) {
+            logsContainer.innerHTML = data.logs.map(function(l) {
+              return '<div class="log-item">' +
+                '<div class="log-meta">' + l.sender + ' • ' + l.time + '</div>' +
+                '<div class="log-incoming">📥 رسالة العميل: <strong>' + l.incoming + '</strong></div>' +
+                '<div class="log-reply">🤖 رد المساعد: ' + l.reply + '</div>' +
+              '</div>';
+            }).join('');
+          }
         }
       } catch(e) {}
     }, 2500);
+
+    // Auto-save debounced sync so changes are NEVER lost
+    let autoSaveTimer = null;
+    function triggerAutoSave() {
+      clearTimeout(autoSaveTimer);
+      const statusBadge = document.getElementById('saveStatusBadge');
+      if (statusBadge) {
+        statusBadge.style.color = '#fbbf24';
+        statusBadge.innerHTML = '⏳ جاري الحفظ...';
+      }
+      autoSaveTimer = setTimeout(async () => {
+        const body = {
+          businessName: document.getElementById('businessName').value.trim(),
+          dialect: document.getElementById('dialect').value,
+          tone: document.getElementById('tone').value,
+          greetingMessage: document.getElementById('greetingMessage').value.trim(),
+          knowledgeBase: document.getElementById('knowledgeBase').value.trim(),
+        };
+        try {
+          const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          if (res.ok) {
+            Object.keys(body).forEach(k => localStorage.setItem('flowdesk_bot_' + k, body[k]));
+            if (statusBadge) {
+              statusBadge.style.color = '#34d399';
+              statusBadge.innerHTML = '🟢 تم الحفظ تلقائياً';
+            }
+          }
+        } catch(e) {
+          if (statusBadge) {
+            statusBadge.style.color = '#f87171';
+            statusBadge.innerHTML = '⚠️ خطأ بالاتصال';
+          }
+        }
+      }, 1000);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const fields = ['businessName', 'dialect', 'tone', 'greetingMessage', 'knowledgeBase'];
+      fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', triggerAutoSave);
+          el.addEventListener('change', triggerAutoSave);
+        }
+      });
+    });
 
     async function handleDisconnect(btn) {
       if (!confirm('هل تريد بالتأكيد فصل الرقم الحالي وإعادة الاقتران برقم جديد؟')) return;
@@ -107,7 +186,7 @@ app.get('/', (req, res) => {
       btn.innerHTML = '⏳ جاري قطع الاتصال وتوليد رمز QR جديد...';
       try {
         await fetch('/api/logout', { method: 'POST' });
-        setTimeout(() => { location.reload(); }, 2000);
+        setTimeout(() => { location.reload(); }, 1500);
       } catch (err) {
         alert('حدث خطأ أثناء قطع الاتصال');
         btn.disabled = false;
@@ -116,35 +195,48 @@ app.get('/', (req, res) => {
     }
 
     async function handleSaveSettings(e) {
-      e.preventDefault();
+      if (e) e.preventDefault();
+      clearTimeout(autoSaveTimer);
       const btn = document.getElementById('saveBtn');
       const msg = document.getElementById('saveMsg');
+      const statusBadge = document.getElementById('saveStatusBadge');
       btn.disabled = true;
-      btn.innerHTML = '⏳ جاري الحفظ والتطبيق...';
+      btn.innerHTML = '⏳ جاري حفظ التعديلات في السيرفر...';
+
+      const body = {
+        businessName: document.getElementById('businessName').value.trim(),
+        dialect: document.getElementById('dialect').value,
+        tone: document.getElementById('tone').value,
+        greetingMessage: document.getElementById('greetingMessage').value.trim(),
+        knowledgeBase: document.getElementById('knowledgeBase').value.trim(),
+      };
+
       try {
-        const body = {
-          businessName: document.getElementById('businessName').value,
-          dialect: document.getElementById('dialect').value,
-          tone: document.getElementById('tone').value,
-          greetingMessage: document.getElementById('greetingMessage').value,
-          knowledgeBase: document.getElementById('knowledgeBase').value,
-        };
         const res = await fetch('/api/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
         if (res.ok) {
+          Object.keys(body).forEach(k => {
+            localStorage.setItem('flowdesk_bot_' + k, body[k]);
+          });
+          if (statusBadge) {
+            statusBadge.style.color = '#34d399';
+            statusBadge.innerHTML = '🟢 تم الحفظ بنجاح';
+          }
           msg.style.display = 'block';
-          btn.innerHTML = '✅ تم الحفظ بنجاح!';
+          btn.innerHTML = '✅ تم الحفظ وتطبيقها على البوت بنجاح!';
           setTimeout(() => {
             msg.style.display = 'none';
             btn.disabled = false;
             btn.innerHTML = '💾 حفظ التعديلات وتطبيقها فوراً على الردود';
-          }, 2500);
+          }, 3000);
+        } else {
+          throw new Error('HTTP error');
         }
       } catch (err) {
-        alert('حدث خطأ أثناء حفظ الإعدادات');
+        alert('حدث خطأ أثناء حفظ الإعدادات في السيرفر، يرجى المحاولة ثانية.');
         btn.disabled = false;
         btn.innerHTML = '💾 حفظ التعديلات وتطبيقها فوراً على الردود';
       }
@@ -173,7 +265,7 @@ app.get('/', (req, res) => {
       <p class="desc">امسح رمز QR أدناه من تطبيق واتساب في هاتفك لبدء الرد الآلي على عملائك وأصدقائك فوراً.</p>
       
       <div class="qr-container">
-        ${currentQRDataUrl ? `<img src="${currentQRDataUrl}" alt="WhatsApp QR Code" />` : '<p style="color:#000; padding: 100px 20px;">جاري توليد الرمز...</p>'}
+        ${currentQRDataUrl ? `<img id="qrImage" src="${currentQRDataUrl}" alt="WhatsApp QR Code" />` : '<p style="color:#000; padding: 100px 20px;">جاري توليد الرمز...</p>'}
       </div>
 
       <div class="steps">
@@ -191,7 +283,7 @@ app.get('/', (req, res) => {
   <div class="settings-card">
     <div class="logs-title">
       <span>🧠 تخصيص شخصية وقاعدة معرفة الذكاء الاصطناعي</span>
-      <span style="font-size: 11px; color: #60a5fa;">تحديث فوري</span>
+      <span id="saveStatusBadge" style="font-size: 11px; color: #34d399; font-weight: 600;">🟢 محفوظ</span>
     </div>
     
     <form id="settingsForm" onsubmit="handleSaveSettings(event)">
@@ -242,14 +334,16 @@ app.get('/', (req, res) => {
       <span>سجل المحادثات والردود الحية (${messageLogs.length})</span>
       <span style="font-size: 11px; color: #10b981;">تحديث تلقائي</span>
     </div>
-    ${messageLogs.length === 0 ? '<p style="font-size: 13px; color: #6b7280; text-align: center; padding: 16px;">لم تصل رسائل بعد. جرب إرسال رسالة من هاتف آخر إلى رقمك لتشاهد الرد المباشر هنا.</p>' : ''}
-    ${messageLogs.slice(0, 10).map(l => `
-      <div class="log-item">
-        <div class="log-meta">${l.sender} • ${l.time}</div>
-        <div class="log-incoming">📥 رسالة العميل: <strong>${l.incoming}</strong></div>
-        <div class="log-reply">🤖 رد المساعد: ${l.reply}</div>
-      </div>
-    `).join('')}
+    <div id="logsContainer">
+      ${messageLogs.length === 0 ? '<p style="font-size: 13px; color: #6b7280; text-align: center; padding: 16px;">لم تصل رسائل بعد. جرب إرسال رسالة من هاتف آخر إلى رقمك لتشاهد الرد المباشر هنا.</p>' : ''}
+      ${messageLogs.slice(0, 10).map(l => `
+        <div class="log-item">
+          <div class="log-meta">${l.sender} • ${l.time}</div>
+          <div class="log-incoming">📥 رسالة العميل: <strong>${l.incoming}</strong></div>
+          <div class="log-reply">🤖 رد المساعد: ${l.reply}</div>
+        </div>
+      `).join('')}
+    </div>
   </div>
 </body>
 </html>`);

@@ -267,8 +267,42 @@ export default function IntegrationsPage() {
     }, 800);
   };
 
-  const handleTestAndSave = () => {
+  const handleTestAndSave = async () => {
     setIsVerifying(true);
+    
+    // If Telegram: call automated backend setup
+    if (selectedChannel?.typeKey === "telegram" && tgBotToken && !tgBotToken.includes("...")) {
+      try {
+        const res = await fetch("/api/v1/channels/telegram/setup/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bot_token: tgBotToken }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setChannels((prev) =>
+            prev.map((ch) =>
+              ch.typeKey === "telegram"
+                ? { ...ch, status: "connected", account: data.bot_username || tgBotUsername }
+                : ch
+            )
+          );
+          setSuccessToast(`🟢 ${data.message || "تم ربط وتفعيل بوت تيليجرام بنجاح!"}`);
+          setIsVerifying(false);
+          setModalOpen(false);
+          setTimeout(() => setSuccessToast(null), 5000);
+          return;
+        } else {
+          alert(`خطأ في ربط تيليجرام: ${data.error || "يرجى التحقق من التوكن"}`);
+          setIsVerifying(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("Telegram backend setup fallback", err);
+      }
+    }
+
+    // Default connection handling
     setTimeout(() => {
       setIsVerifying(false);
       if (selectedChannel) {

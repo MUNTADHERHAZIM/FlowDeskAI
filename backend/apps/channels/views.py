@@ -167,6 +167,9 @@ class InboundWebhookReceiverView(APIView):
                 text_content=ai_response_text,
                 metadata={"ai_generated": True, "model": ai_res.get("model")},
             )
+
+            # Dispatch outbound reply directly to the external platform (Telegram, Meta, etc.)
+            self._dispatch_outbound_reply(channel, sender_id, ai_response_text)
         else:
             ai_response_text = "[Human Takeover Active]: الرد الآلي معلق مؤقتاً لأن الموظف استلم المحادثة."
 
@@ -183,6 +186,65 @@ class InboundWebhookReceiverView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+    def _dispatch_outbound_reply(self, channel, sender_id: str, reply_text: str):
+        """
+        Dispatches outbound AI message directly back to the external platform.
+        Supports: Telegram, Meta WhatsApp Cloud API, Instagram DM, Messenger.
+        """
+        import requests
+        channel_type = channel.channel_type
+        creds = channel.credentials or {}
+
+        # 1. Telegram Bot API
+        if channel_type == "telegram":
+            bot_token = creds.get("bot_token") or channel.webhook_secret
+            if bot_token and sender_id:
+                try:
+                    requests.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json={"chat_id": sender_id, "text": reply_text},
+                        timeout=8,
+                    )
+                except Exception as e:
+                    pass
+
+        # 2. WhatsApp Cloud API (Meta)
+        elif channel_type == "whatsapp":
+            phone_number_id = creds.get("phone_number_id")
+            access_token = creds.get("access_token")
+            if phone_number_id and access_token and sender_id:
+                try:
+                    requests.post(
+                        f"https://graph.facebook.com/v20.0/{phone_number_id}/messages",
+                        headers={"Authorization": f"Bearer {access_token}"},
+                        json={
+                            "messaging_product": "whatsapp",
+                            "to": sender_id,
+                            "type": "text",
+                            "text": {"body": reply_text},
+                        },
+                        timeout=8,
+                    )
+                except Exception as e:
+                    pass
+
+        # 3. Instagram DM & Facebook Messenger (Meta)
+        elif channel_type in ["instagram", "messenger"]:
+            page_token = creds.get("access_token")
+            if page_token and sender_id:
+                try:
+                    requests.post(
+                        "https://graph.facebook.com/v20.0/me/messages",
+                        headers={"Authorization": f"Bearer {page_token}"},
+                        json={
+                            "recipient": {"id": sender_id},
+                            "message": {"text": reply_text},
+                        },
+                        timeout=8,
+                    )
+                except Exception as e:
+                    pass
 
     def _extract_payload(self, channel_type: str, payload: dict) -> dict:
         """
@@ -274,4 +336,79 @@ class PublicWebChatWebhookView(APIView):
         )
 
         return InboundWebhookReceiverView().post(request, channel_id=channel.id)
+
+
+class TelegramBotSetupView(APIView):
+    """
+    Automated one-click setup for Telegram Bot:
+    Verifies bot_token, configures webhook on PythonAnywhere, and creates channel connection.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        import requests
+        bot_token = request.data.get("bot_token", "").strip()
+        tenant_id = request.data.get("tenant_id")
+
+        if not bot_token:
+            return Response({"error": "يجب إدخال رمز bot_token الخاص بتيليجرام"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Verify token with Telegram getMe
+        try:
+            me_res = requests.get(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=8)
+            me_data = me_res.json()
+            if not me_data.get("ok"):
+                return Response({"error": "رمز توكن البوت غير صحيح أو تم إيقافه من BotFather"}, status=status.HTTP_400_BAD_REQUEST)
+            bot_info = me_data.get("result", {})
+            bot_username = bot_info.get("username", "TelegramBot")
+            bot_first_name = bot_info.get("first_name", "مساعد ذكي")
+        except Exception as e:
+            return Response({"error": f"تعذر الاتصال بخادم تيليجرام: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # 2. Get or create Tenant
+        tenant = None
+        if tenant_id:
+            try:
+                tenant = Tenant.objects.filter(id=uuid.UUID(str(tenant_id))).first()
+            except (ValueError, TypeError):
+                pass
+        if not tenant:
+            tenant = Tenant.objects.first()
+            if not tenant:
+                tenant = Tenant.objects.create(name="مؤسستي", slug="main-tenant")
+
+        # 3. Create or update ChannelConnection
+        channel, _ = ChannelConnection.objects.get_or_create(
+            tenant=tenant,
+            channel_type="telegram",
+            defaults={"name": f"بوت تيليجرام (@{bot_username})", "is_active": True},
+        )
+        channel.name = f"بوت تيليجرام (@{bot_username})"
+        channel.credentials = {"bot_token": bot_token, "username": bot_username, "bot_id": bot_info.get("id")}
+        channel.webhook_secret = bot_token
+        channel.is_active = True
+        channel.save()
+
+        # 4. Set Telegram Webhook to PythonAnywhere URL
+        webhook_url = f"https://flowdeskai.pythonanywhere.com/api/v1/channels/{channel.id}/webhook/"
+        try:
+            set_res = requests.post(
+                f"https://api.telegram.org/bot{bot_token}/setWebhook",
+                json={"url": webhook_url, "drop_pending_updates": True},
+                timeout=8
+            )
+            set_data = set_res.json()
+        except Exception as e:
+            set_data = {"ok": False, "error": str(e)}
+
+        return Response({
+            "status": "success",
+            "channel_id": str(channel.id),
+            "bot_username": f"@{bot_username}",
+            "bot_name": bot_first_name,
+            "webhook_url": webhook_url,
+            "telegram_webhook_status": set_data,
+            "message": f"تم تفعيل بوت تيليجرام @{bot_username} وربطه بالذكاء الاصطناعي بنجاح تام!",
+        }, status=status.HTTP_200_OK)
+
 

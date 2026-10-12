@@ -1,0 +1,18 @@
+{
+  "name": "flowdesk-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp QR Bot for FlowDesk AI",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.19",
+    "express": "^4.21.2",
+    "node-cache": "^5.1.2",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

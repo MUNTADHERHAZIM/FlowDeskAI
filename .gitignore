@@ -31,7 +31,7 @@ staticfiles/
 # Node / Next.js
 node_modules/
 .next/
-out/
+# out/ - tracked for PythonAnywhere static frontend deployment
 build/
 dist/
 npm-debug.log*

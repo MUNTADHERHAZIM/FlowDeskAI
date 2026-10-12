@@ -11,6 +11,7 @@ import qrcodeTerminal from 'qrcode-terminal';
 import QRCode from 'qrcode';
 import express from 'express';
 import http from 'http';
+import fs from 'fs';
 
 const app = express();
 const server = http.createServer(app);
@@ -21,6 +22,7 @@ let currentQRDataUrl = null;
 let connectionStatus = 'initializing';
 let connectedUser = null;
 let messageLogs = [];
+let activeSocket = null;
 
 const msgRetryCounterCache = new NodeCache();
 
@@ -66,6 +68,20 @@ app.get('/', (req, res) => {
         }
       } catch(e) {}
     }, 2500);
+
+    async function handleDisconnect(btn) {
+      if (!confirm('هل تريد بالتأكيد فصل الرقم الحالي وإعادة الاقتران برقم جديد؟')) return;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ جاري قطع الاتصال وتوليد رمز QR جديد...';
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+        setTimeout(() => { location.reload(); }, 2000);
+      } catch (err) {
+        alert('حدث خطأ أثناء قطع الاتصال');
+        btn.disabled = false;
+        btn.innerHTML = '🔄 قطع الاتصال والاقتران برقم آخر';
+      }
+    }
   </script>
 </head>
 <body>
@@ -77,6 +93,12 @@ app.get('/', (req, res) => {
         <h2 style="font-size: 18px; margin-bottom: 6px; color: #34d399;">واتسابك مربوط وجاهز للرد!</h2>
         <p style="font-size: 14px; color: #9ca3af;">الرقم المتصل: <strong style="color: #fff;">${connectedUser || 'رقمك الشخصي'}</strong></p>
         <p style="font-size: 13px; color: #6ee7b7; margin-top: 8px;">أي شخص يرسل لك رسالة الآن، سيرد عليه الذكاء الاصطناعي نيابة عنك فوراً.</p>
+        
+        <div style="margin-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
+          <button onclick="handleDisconnect(this)" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 10px 22px; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 13px; transition: all 0.2s;">
+            🔄 قطع الاتصال والاقتران برقم آخر
+          </button>
+        </div>
       </div>
     ` : `
       <div class="badge badge-connecting">⏳ بانتظار مسح رمز QR</div>
@@ -124,6 +146,37 @@ app.get('/api/status', (req, res) => {
     qr: currentQR,
     logsCount: messageLogs.length
   });
+});
+
+app.post('/api/logout', async (req, res) => {
+  console.log('🔄 استلام طلب قطع الاتصال وإعادة الاقتران...');
+  try {
+    if (activeSocket) {
+      try {
+        await activeSocket.logout();
+      } catch (e) {}
+      try {
+        activeSocket.end();
+      } catch (e) {}
+      activeSocket = null;
+    }
+  } catch (e) {}
+
+  try {
+    if (fs.existsSync('./auth_info_baileys')) {
+      fs.rmSync('./auth_info_baileys', { recursive: true, force: true });
+    }
+  } catch (e) {
+    console.error('خطأ عند حذف مجلد الجلسة:', e.message);
+  }
+
+  connectionStatus = 'initializing';
+  connectedUser = null;
+  currentQR = null;
+  currentQRDataUrl = null;
+
+  setTimeout(connectToWhatsApp, 1500);
+  res.json({ ok: true, message: 'Session cleared, new QR generating' });
 });
 
 // Intelligent AI Response Generator
@@ -208,6 +261,8 @@ async function connectToWhatsApp() {
     browser: ['FlowDesk AI', 'Chrome', '1.0.0']
   });
 
+  activeSocket = sock;
+
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
 
@@ -224,12 +279,22 @@ async function connectToWhatsApp() {
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-      console.log('⚠️ تم إغلاق الاتصال، رمز الحالة:', statusCode, 'إعادة المحاولة:', shouldReconnect);
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+      console.log('⚠️ تم إغلاق الاتصال، رمز الحالة:', statusCode, 'تسجيل خروج:', isLoggedOut);
       connectionStatus = 'disconnected';
       currentQR = null;
       currentQRDataUrl = null;
-      if (shouldReconnect) {
+      connectedUser = null;
+
+      if (isLoggedOut) {
+        console.log('🗑️ تم تسجيل الخروج من الجهاز، جاري تنظيف الجلسة وتوليد رمز QR جديد...');
+        try {
+          if (fs.existsSync('./auth_info_baileys')) {
+            fs.rmSync('./auth_info_baileys', { recursive: true, force: true });
+          }
+        } catch (e) {}
+        setTimeout(connectToWhatsApp, 2000);
+      } else {
         setTimeout(connectToWhatsApp, 3000);
       }
     } else if (connection === 'open') {

@@ -2,7 +2,8 @@ import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore
+  makeCacheableSignalKeyStore,
+  downloadMediaMessage
 } from '@whiskeysockets/baileys';
 import NodeCache from 'node-cache';
 import pino from 'pino';
@@ -152,6 +153,39 @@ function generateSmartReply(incomingText, senderNumber) {
   return `مرحباً بك! أنا المساعد الذكي الآلي لـ FlowDesk AI المربوط بهذا الرقم. استلمت رسالتك ("${incomingText}")، كيف يمكنني مساعدتك اليوم بخصوص الاستفسارات أو حجز المواعيد؟`;
 }
 
+async function transcribeAudio(buffer) {
+  const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const isGroq = apiKey.startsWith("gsk_") || Boolean(process.env.GROQ_API_KEY);
+    const endpoint = isGroq 
+      ? "https://api.groq.com/openai/v1/audio/transcriptions"
+      : "https://api.openai.com/v1/audio/transcriptions";
+    const model = isGroq ? "whisper-large-v3" : "whisper-1";
+
+    const formData = new FormData();
+    const audioBlob = new Blob([buffer], { type: "audio/ogg" });
+    formData.append("file", audioBlob, "voice.ogg");
+    formData.append("model", model);
+    formData.append("language", "ar");
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}` },
+      body: formData,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data.text ? data.text.trim() : null;
+    }
+  } catch (err) {
+    console.warn("فشل تفريغ الصوت عبر الـ API:", err.message);
+  }
+  return null;
+}
+
 // Start WhatsApp Baileys Connection
 async function connectToWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState('./auth_info_baileys');
@@ -205,7 +239,7 @@ async function connectToWhatsApp() {
       connectedUser = sock.user?.id ? sock.user.id.split(':')[0] : 'رقمك المتصل';
       console.log('\n🎉 ====================================================');
       console.log(`✅ تم ربط واتساب بنجاح برقم: +${connectedUser}`);
-      console.log('🤖 المساعد الذكي جاهز الآن للرد على أي رسالة تصلك تلقائياً!');
+      console.log('🤖 المساعد الذكي جاهز الآن للرد على الرسائل والتسجيلات الصوتية تلقائياً!');
       console.log(`🌐 يمكنك متابعة الرسائل الحية على: http://localhost:${PORT}`);
       console.log('======================================================\n');
     }
@@ -213,7 +247,7 @@ async function connectToWhatsApp() {
 
   sock.ev.on('creds.update', saveCreds);
 
-  // Incoming Messages Handler
+  // Incoming Messages Handler (Text + Voice Notes)
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     for (const msg of messages) {
       if (msg.key.fromMe) continue;
@@ -222,50 +256,75 @@ async function connectToWhatsApp() {
       if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') continue;
 
       const senderNumber = remoteJid.split('@')[0];
-      const text = msg.message?.conversation || 
-                   msg.message?.extendedTextMessage?.text || 
-                   msg.message?.imageMessage?.caption || '';
+      const isAudio = Boolean(msg.message?.audioMessage);
+      const audioDuration = msg.message?.audioMessage?.seconds || 0;
 
-      if (!text || text.trim() === '') continue;
+      let text = msg.message?.conversation || 
+                 msg.message?.extendedTextMessage?.text || 
+                 msg.message?.imageMessage?.caption || '';
 
-      console.log(`\n📥 [رسالة جديدة] من (+${senderNumber}): "${text}"`);
+      if (isAudio) {
+        console.log(`\n🎙️ [تسجيل صوتي وارد] من (+${senderNumber})، المدة: ${audioDuration} ثانية...`);
+        try {
+          const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+          const transcribed = await transcribeAudio(buffer);
+          if (transcribed) {
+            console.log(`📝 [تم تفريغ الصوت بنجاح]: "${transcribed}"`);
+            text = transcribed;
+          }
+        } catch (err) {
+          console.warn('تعذر تحميل البصمة الصوتية:', err.message);
+        }
+      }
 
-      // Generate AI Reply (Try Django Backend first, then fallback to local smart reply)
+      if (!text && !isAudio) continue;
+
       let reply = "";
       const BACKEND_URL = process.env.BACKEND_URL || "https://flowdeskai.pythonanywhere.com";
 
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/v1/channels/webchat/webhook/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sender_id: senderNumber,
-            sender_name: `واتساب (+${senderNumber})`,
-            text: text,
-            channel: "whatsapp",
-          }),
-        });
-        if (response.ok) {
-          const resData = await response.json();
-          if (resData.reply) {
-            reply = resData.reply;
-          }
-        }
-      } catch (e) {
-        // Fallback to local offline smart reply
-      }
+      if (isAudio && !text) {
+        // Voice note without transcription key
+        reply = `🎙️ أهلاً وسهلاً بحضرتك! استلمت تسجيلك الصوتي (${audioDuration} ثانية) بنجاح.
 
-      if (!reply) {
-        reply = generateSmartReply(text, senderNumber);
+يسعدنا خدمتك عبر المساعد الذكي لـ FlowDesk AI. مواعيدنا متاحة يومياً من الساعة 9:00 ص إلى 10:00 م. هل ترغب في حجز موعد اليوم، أو توضيح استفسارك لنساعدك فوراً؟`;
+      } else {
+        // Normal text or transcribed voice note
+        try {
+          const response = await fetch(`${BACKEND_URL}/api/v1/channels/webchat/webhook/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sender_id: senderNumber,
+              sender_name: `واتساب (+${senderNumber})`,
+              text: text,
+              is_audio: isAudio,
+              channel: "whatsapp",
+            }),
+          });
+          if (response.ok) {
+            const resData = await response.json();
+            if (resData.reply) {
+              reply = resData.reply;
+            }
+          }
+        } catch (e) {}
+
+        if (!reply) {
+          reply = generateSmartReply(text, senderNumber);
+        }
+
+        if (isAudio && text) {
+          reply = `🎙️ [تم الاستماع إلى بصمتك الصوتية: "${text}"]\n\n${reply}`;
+        }
       }
 
       try {
         await sock.sendMessage(remoteJid, { text: reply }, { quoted: msg });
-        console.log(`📤 [تم الرد آلياً] على (+${senderNumber}): "${reply}"\n`);
+        console.log(`📤 [تم الرد الذكي على ${isAudio ? 'التسجيل الصوتي' : 'الرسالة'}] (+${senderNumber}):\n"${reply}"\n`);
 
         messageLogs.unshift({
           sender: `+${senderNumber}`,
-          incoming: text,
+          incoming: isAudio ? (text ? `🎙️ "${text}"` : `🎙️ [تسجيل صوتي ${audioDuration} ثانية]`) : text,
           reply: reply,
           time: new Date().toLocaleTimeString('ar-IQ')
         });

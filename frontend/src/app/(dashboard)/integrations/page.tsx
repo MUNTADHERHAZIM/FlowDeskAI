@@ -443,17 +443,15 @@ export default function IntegrationsPage() {
               اربط رقمك الشخصي مع مفتاح الدولة أو ولّد باركود شات فوري لعملائك للرد التلقائي.
             </p>
             <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  const channel = channels.find((c) => c.typeKey === "whatsapp");
-                  if (channel) handleOpenChannelConfig(channel);
-                }}
+              <a
+                href="https://emerging-single-publishing-many.trycloudflare.com"
+                target="_blank"
+                rel="noreferrer"
                 className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-600/30"
               >
                 <QrCode className="w-3.5 h-3.5" />
-                <span>📱 مسح باركود واتساب</span>
-              </button>
+                <span>📱 بوابة مسح QR الحية (أونلاين) ↗</span>
+              </a>
             </div>
           </div>
 

@@ -10,7 +10,22 @@ load_dotenv(BASE_DIR.parent / ".env")
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-flowdesk-super-secret-key-change-in-production-2026")
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0,backend").split(",")
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv(
+        "ALLOWED_HOSTS",
+        "*,flowdeskai.pythonanywhere.com,.pythonanywhere.com,localhost,127.0.0.1,0.0.0.0,backend"
+    ).split(",")
+    if h.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://flowdeskai.pythonanywhere.com",
+    "http://flowdeskai.pythonanywhere.com",
+    "https://*.pythonanywhere.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
 # Application definition
 DJANGO_APPS = [

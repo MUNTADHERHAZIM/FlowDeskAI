@@ -444,13 +444,13 @@ export default function IntegrationsPage() {
             </p>
             <div className="flex items-center gap-2 pt-1">
               <a
-                href="http://localhost:5050"
+                href="https://printing-adjacent-territories-earned.trycloudflare.com"
                 target="_blank"
                 rel="noreferrer"
                 className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-600/30"
               >
                 <QrCode className="w-3.5 h-3.5" />
-                <span>📱 بوابة مسح QR المباشرة (localhost:5050) ↗</span>
+                <span>📱 بوابة مسح QR الحية (أونلاين) ↗</span>
               </a>
             </div>
           </div>

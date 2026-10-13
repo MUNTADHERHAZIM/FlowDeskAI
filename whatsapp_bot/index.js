@@ -15,12 +15,15 @@ import fs from 'fs';
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 5050;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const args = process.argv.slice(2);
+const portArg = args.find(a => a.startsWith('--port='));
+const sessionArg = args.find(a => a.startsWith('--session='));
 
-const SESSION_NAME = process.env.SESSION_NAME || '';
+const PORT = portArg ? parseInt(portArg.split('=')[1], 10) : (process.env.PORT || 5050);
+const SESSION_NAME = sessionArg ? sessionArg.split('=')[1] : (process.env.SESSION_NAME || '');
 const SETTINGS_FILE = SESSION_NAME ? `./bot_settings_${SESSION_NAME}.json` : './bot_settings.json';
 const AUTH_DIR = process.env.AUTH_DIR || (SESSION_NAME ? `./auth_info_${SESSION_NAME}` : './auth_info_baileys');
 let botSettings = {
@@ -246,6 +249,16 @@ app.get('/', (req, res) => {
   </script>
 </head>
 <body>
+  <!-- Multi-Number Navigation Bar -->
+  <div style="display: flex; gap: 10px; margin-bottom: 16px; width: 100%; max-width: 580px; justify-content: center;">
+    <a href="http://localhost:5050" style="flex: 1; padding: 10px; border-radius: 12px; text-decoration: none; text-align: center; font-weight: 700; font-size: 13px; background: ${PORT == 5050 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)'}; color: ${PORT == 5050 ? '#34d399' : '#9ca3af'}; border: 1px solid ${PORT == 5050 ? '#10b981' : 'rgba(255, 255, 255, 0.1)'};">
+      📱 الرقم الأول (5050)
+    </a>
+    <a href="http://localhost:5051" style="flex: 1; padding: 10px; border-radius: 12px; text-decoration: none; text-align: center; font-weight: 700; font-size: 13px; background: ${PORT == 5051 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)'}; color: ${PORT == 5051 ? '#34d399' : '#9ca3af'}; border: 1px solid ${PORT == 5051 ? '#10b981' : 'rgba(255, 255, 255, 0.1)'};">
+      ➕ ربط الرقم الثاني (5051)
+    </a>
+  </div>
+
   <div class="card">
     ${connectionStatus === 'connected' ? `
       <div class="badge badge-connected">🟢 متصل بنجاح ونشط الآن</div>
@@ -255,9 +268,12 @@ app.get('/', (req, res) => {
         <p style="font-size: 14px; color: #9ca3af;">الرقم المتصل: <strong style="color: #fff;">${connectedUser || 'رقمك الشخصي'}</strong></p>
         <p style="font-size: 13px; color: #6ee7b7; margin-top: 8px;">أي شخص يرسل لك رسالة الآن، سيرد عليه الذكاء الاصطناعي بناءً على اللهجة والمعلومات المحددة أدناه.</p>
         
-        <div style="margin-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
-          <button onclick="handleDisconnect(this)" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 10px 22px; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 13px; transition: all 0.2s;">
-            🔄 قطع الاتصال والاقتران برقم آخر
+        <div style="margin-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+          <a href="http://localhost:5051" target="_blank" style="background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.4); color: #6ee7b7; padding: 10px 20px; border-radius: 12px; font-weight: 600; text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
+            ➕ ربط رقم واتساب ثانٍ (رقم 2) ↗
+          </a>
+          <button onclick="handleDisconnect(this)" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 10px 18px; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 13px; transition: all 0.2s;">
+            🔄 قطع هذا الرقم فقط
           </button>
         </div>
       </div>

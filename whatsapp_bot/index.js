@@ -20,7 +20,9 @@ const PORT = process.env.PORT || 5050;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const SETTINGS_FILE = './bot_settings.json';
+const SESSION_NAME = process.env.SESSION_NAME || '';
+const SETTINGS_FILE = SESSION_NAME ? `./bot_settings_${SESSION_NAME}.json` : './bot_settings.json';
+const AUTH_DIR = process.env.AUTH_DIR || (SESSION_NAME ? `./auth_info_${SESSION_NAME}` : './auth_info_baileys');
 let botSettings = {
   businessName: 'FlowDesk AI',
   dialect: 'iraqi',
@@ -521,7 +523,7 @@ async function transcribeAudio(buffer) {
 
 // Start WhatsApp Baileys Connection
 async function connectToWhatsApp() {
-  const { state, saveCreds } = await useMultiFileAuthState('./auth_info_baileys');
+  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
   const sock = makeWASocket({

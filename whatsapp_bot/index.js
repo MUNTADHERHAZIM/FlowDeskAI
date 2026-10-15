@@ -669,14 +669,33 @@ async function connectToWhatsApp() {
   });
 
   // Incoming Messages Handler (Text + Voice Notes + Images + Media)
+  const processedMessageIds = new Set();
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    // 1. Only process new incoming notifications (prevents duplicate processing on append / history sync)
+    if (type !== 'notify') return;
+
     for (const msg of messages) {
       if (msg.key.fromMe) continue;
+
+      const msgId = msg.key.id;
+      if (!msgId || processedMessageIds.has(msgId)) continue;
+      processedMessageIds.add(msgId);
+      setTimeout(() => processedMessageIds.delete(msgId), 5 * 60 * 1000);
 
       const remoteJid = msg.key.remoteJid;
       if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') continue;
 
-      const senderNumber = remoteJid.split('@')[0];
+      // Extract sender phone number or lid identifier
+      const isLid = remoteJid.endsWith('@lid');
+      let senderNumber = remoteJid.split('@')[0];
+      if (isLid && msg.key.participant) {
+        senderNumber = msg.key.participant.split('@')[0];
+      }
+
+      // Customer actual WhatsApp name (e.g. حيدر، أحمد، etc.)
+      const pushName = (msg.pushName || '').trim();
+      const customerDisplayName = pushName || (isLid ? "عميل واتساب" : `+${senderNumber}`);
+
       const isAudio = Boolean(msg.message?.audioMessage);
       const audioDuration = msg.message?.audioMessage?.seconds || 0;
       const isImage = Boolean(msg.message?.imageMessage);
@@ -691,7 +710,7 @@ async function connectToWhatsApp() {
                  msg.message?.documentMessage?.caption || '';
 
       if (isAudio) {
-        console.log(`\n🎙️ [تسجيل صوتي وارد] من (+${senderNumber})، المدة: ${audioDuration} ثانية...`);
+        console.log(`\n🎙️ [تسجيل صوتي وارد] من (${customerDisplayName})، المدة: ${audioDuration} ثانية...`);
         try {
           const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
           const transcribed = await transcribeAudio(buffer);
@@ -732,10 +751,10 @@ async function connectToWhatsApp() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               sender_id: senderNumber,
-              sender_name: `واتساب (+${senderNumber})`,
+              sender_name: pushName || "العميل الكريم",
               text: text,
               is_audio: isAudio,
-              channel: "whatsapp",
+              channel: "واتساب (WhatsApp)",
             }),
           });
           if (response.ok) {
@@ -765,7 +784,7 @@ async function connectToWhatsApp() {
         else if (isVideo) msgTypeTitle = 'الفيديو';
         else if (isDocument) msgTypeTitle = 'المستند';
 
-        console.log(`📤 [تم الرد الذكي على ${msgTypeTitle}] (+${senderNumber}):\n"${reply}"\n`);
+        console.log(`📤 [تم الرد الذكي على ${msgTypeTitle}] (${customerDisplayName}):\n"${reply}"\n`);
 
         let incomingLogText = text;
         if (isAudio) incomingLogText = text ? `🎙️ "${text}"` : `🎙️ [تسجيل صوتي ${audioDuration} ثانية]`;
@@ -775,7 +794,7 @@ async function connectToWhatsApp() {
         else if (isSticker) incomingLogText = `💟 [ملصق]`;
 
         messageLogs.unshift({
-          sender: `+${senderNumber}`,
+          sender: customerDisplayName,
           incoming: incomingLogText,
           reply: reply,
           time: new Date().toLocaleTimeString('ar-IQ')

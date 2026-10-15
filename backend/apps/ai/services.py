@@ -152,10 +152,25 @@ def generate_omnichannel_response(
         except Exception as e:
             logger.warning(f"Gemini API call failed: {e}")
 
+    # Clean greeting name: never say "يا واتساب (+1424...)" or raw numbers
+    clean_name = (sender_name or "").strip()
+    if not clean_name or "واتساب" in clean_name or "1424" in clean_name or "@" in clean_name or clean_name.startswith("+") or clean_name == "مستخدم المنصة":
+        name_greeting = "أهلاً وسهلاً بحضرتك!"
+    else:
+        name_greeting = f"أهلاً وسهلاً بحضرتك يا {clean_name}!"
+
+    # Clean channel label
+    if not origin_channel or "web" in origin_channel.lower() or "موقع" in origin_channel:
+        channel_label = "المساعد الذكي لـ FlowDesk AI"
+    elif "whatsapp" in origin_channel.lower() or "واتساب" in origin_channel:
+        channel_label = "واتساب"
+    else:
+        channel_label = origin_channel
+
     # 2. High Quality Contextual Fallback Response
     if "موعد" in incoming_text or "احجز" in incoming_text:
         reply = (
-            f"أهلاً وسهلاً بحضرتك يا {sender_name}! يسعدنا جداً خدمتك. "
+            f"{name_greeting} يسعدنا جداً خدمتك عبر {channel_label}. "
             "مواعيدنا متاحة يومياً من 9:00 ص إلى 10:00 م. "
             "تحب نثبت لك موعد اليوم أو غداً، وفي أي وقت يناسب حضرتك؟"
         )
@@ -171,7 +186,7 @@ def generate_omnichannel_response(
         )
     else:
         reply = (
-            f"أهلاً وسهلاً بحضرتك يا {sender_name}! تشرفنا بتواصلك معنا عبر {origin_channel}. "
+            f"{name_greeting} تشرفنا بتواصلك معنا عبر {channel_label}. "
             "كيف يمكن لمساعدنا الذكي خدمتك اليوم بخصوص الاستشارات والمواعيد؟"
         )
 

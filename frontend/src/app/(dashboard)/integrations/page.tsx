@@ -442,15 +442,24 @@ export default function IntegrationsPage() {
             <p className="text-[11px] text-gray-400 leading-relaxed">
               اربط رقمك الشخصي مع مفتاح الدولة أو ولّد باركود شات فوري لعملائك للرد التلقائي.
             </p>
-            <div className="flex items-center gap-2 pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <a
-                href="https://printing-adjacent-territories-earned.trycloudflare.com"
+                href="http://localhost:5050"
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-600/30"
+                className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-600/30 text-center"
               >
                 <QrCode className="w-3.5 h-3.5" />
-                <span>📱 بوابة مسح QR الحية (أونلاين) ↗</span>
+                <span>📱 الرقم 1 (5050) ↗</span>
+              </a>
+              <a
+                href="http://localhost:5051"
+                target="_blank"
+                rel="noreferrer"
+                className="py-1.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-purple-600/30 text-center"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>📱 الرقم 2 (5051) ↗</span>
               </a>
             </div>
           </div>

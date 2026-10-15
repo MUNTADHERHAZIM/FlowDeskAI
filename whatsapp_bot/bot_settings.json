@@ -1,7 +1,9 @@
 {
-  "businessName": "FlowDesk AI",
+  "businessName": "MUNTADHER HAZIM",
   "dialect": "iraqi",
-  "tone": "friendly",
-  "greetingMessage": "أهلاً وسهلاً!",
-  "knowledgeBase": "ساعات العمل الرسمية: يومياً"
+  "tone": "professional",
+  "greetingMessage": "أهلاً وسهلاً! بكم سوف يتم الرد في اقرب وقت ان شاء لله",
+  "imageReplyMessage": "📷 أهلاً وسهلاً بك! تم استلام الصورة وسأقوم بالرد عليك في أقرب وقت ممكن بإذن الله.",
+  "missedCallReplyMessage": "📞 أهلاً وسهلاً بك! نعتذر عن تفويت مكالمتك، وسأقوم بالرد والتواصل معك في أقرب وقت ممكن بإذن الله.",
+  "knowledgeBase": "ساعات العمل الرسمية: يومياً من 9:00 الى 10:00 مساءً  أيام العطل الجمعة والسبت"
 }

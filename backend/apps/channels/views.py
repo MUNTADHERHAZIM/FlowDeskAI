@@ -412,3 +412,65 @@ class TelegramBotSetupView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class WhatsAppBotManagerView(APIView):
+    """
+    API endpoint to check and trigger local WhatsApp Baileys bots directly from the UI.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def _check_port(self, port: int) -> bool:
+        import socket
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.4)
+                return s.connect_ex(("127.0.0.1", port)) == 0
+        except Exception:
+            return False
+
+    def get(self, request):
+        return Response({
+            "bot1_online": self._check_port(5050),
+            "bot2_online": self._check_port(5051),
+        })
+
+    def post(self, request):
+        import subprocess
+        from django.conf import settings
+        action = request.data.get("action", "start_all")
+        bot_dir = Path(settings.BASE_DIR).parent / "whatsapp_bot"
+
+        started = []
+        if action in ["start_bot1", "start_all"]:
+            if not self._check_port(5050):
+                try:
+                    subprocess.Popen(
+                        ["node", "index.js", "--port=5050", "--session=default"],
+                        cwd=str(bot_dir),
+                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                    )
+                    started.append("bot1")
+                except Exception as e:
+                    pass
+
+        if action in ["start_bot2", "start_all"]:
+            if not self._check_port(5051):
+                try:
+                    subprocess.Popen(
+                        ["node", "index.js", "--port=5051", "--session=number2"],
+                        cwd=str(bot_dir),
+                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                    )
+                    started.append("bot2")
+                except Exception as e:
+                    pass
+
+        return Response({
+            "status": "ok",
+            "started": started,
+            "bot1_online": self._check_port(5050),
+            "bot2_online": self._check_port(5051),
+            "message": "تم إرسال إشارة تشغيل البوتات بنجاح!",
+        })
+
+
+

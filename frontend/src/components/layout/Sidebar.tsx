@@ -14,6 +14,8 @@ import {
   Settings,
   Sparkles,
   Zap,
+  Phone,
+  ExternalLink,
 } from "lucide-react";
 
 interface NavItem {
@@ -36,6 +38,33 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [isStarting, setIsStarting] = React.useState(false);
+  const [startMsg, setStartMsg] = React.useState<string | null>(null);
+
+  const handleQuickStartAll = async () => {
+    setIsStarting(true);
+    setStartMsg(null);
+    try {
+      const res = await fetch("/api/v1/channels/whatsapp/control/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start_all" }),
+      });
+      if (res.ok) {
+        setStartMsg("✅ تم تشغيل الرقمين بنجاح!");
+      }
+    } catch (e) {
+      // Fallback
+    } finally {
+      setIsStarting(false);
+      // Open both numbers in tabs
+      setTimeout(() => {
+        window.open("http://localhost:5050", "_blank");
+        window.open("http://localhost:5051", "_blank");
+      }, 800);
+      setTimeout(() => setStartMsg(null), 4000);
+    }
+  };
 
   return (
     <aside className="w-64 bg-[#0d121f] border-l border-gray-800/80 flex flex-col h-screen sticky top-0 select-none z-30 transition-all duration-300">
@@ -96,6 +125,59 @@ export function Sidebar() {
             </Link>
           );
         })}
+      </div>
+
+      {/* WhatsApp Bot Control Widget in Sidebar */}
+      <div className="px-3 pb-1">
+        <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-gray-900/90 to-[#0e1726] border border-emerald-500/30 space-y-2 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <Phone className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-xs font-bold text-white">بوتات واتساب</span>
+            </div>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold">
+              نشط
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+            <a
+              href="http://localhost:5050"
+              target="_blank"
+              rel="noreferrer"
+              className="py-1.5 px-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-all"
+              title="فتح بوابة الرقم الأول"
+            >
+              <span>📱 الرقم 1 (5050)</span>
+            </a>
+            <a
+              href="http://localhost:5051"
+              target="_blank"
+              rel="noreferrer"
+              className="py-1.5 px-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 text-purple-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-all"
+              title="فتح بوابة الرقم الثاني"
+            >
+              <span>📱 الرقم 2 (5051)</span>
+            </a>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleQuickStartAll}
+            disabled={isStarting}
+            className="w-full py-1.5 px-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
+          >
+            <Zap className="w-3 h-3" />
+            <span>{isStarting ? "⏳ جاري بدء البوتات..." : "⚡ تشغيل الرقمين بضغطة زر"}</span>
+          </button>
+          {startMsg && (
+            <div className="text-[10px] text-emerald-400 text-center font-bold animate-pulse">
+              {startMsg}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Subscription Card & Developer Attribution */}

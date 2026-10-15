@@ -58,4 +58,5 @@ yarn-error.log*
 Thumbs.db
 
 # WhatsApp session auth
-whatsapp_bot/auth_info_baileys/
+whatsapp_bot/auth_info*/
+active_whatsapp_url.txt

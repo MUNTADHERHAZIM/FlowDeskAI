@@ -31,6 +31,8 @@ let botSettings = {
   dialect: 'iraqi',
   tone: 'friendly',
   greetingMessage: 'أهلاً وسهلاً بحضرتك! يسعدنا خدمتك عبر المساعد الذكي لـ FlowDesk AI. كيف يمكننا مساعدتك اليوم بخصوص الاستفسارات والمواعيد؟',
+  imageReplyMessage: '📷 أهلاً وسهلاً بك! تم استلام الصورة بنجاح، وسأقوم بالرد عليك وتدقيقها في أقرب وقت ممكن بإذن الله.',
+  missedCallReplyMessage: '📞 أهلاً وسهلاً بك! نعتذر عن عدم التمكن من الرد على المكالمة حالياً، وسأقوم بالرد والتواصل معك في أقرب وقت ممكن بإذن الله.',
   knowledgeBase: 'ساعات العمل الرسمية: يومياً من الساعة 9:00 صباحاً وحتى 10:00 مساءً طوال أيام الأسبوع.\nالخدمات: استشارات طبية وتقنية، حجز مواعيد، وخدمة عملاء فورية.\nالأسعار: كشف الاستشارة 35,000 دينار عراقي.\nالموقع: فرعنا الرئيسي متاح لاستقبالكم طوال أيام الأسبوع.'
 };
 
@@ -150,6 +152,8 @@ app.get('/', (req, res) => {
           dialect: document.getElementById('dialect').value,
           tone: document.getElementById('tone').value,
           greetingMessage: document.getElementById('greetingMessage').value.trim(),
+          imageReplyMessage: document.getElementById('imageReplyMessage').value.trim(),
+          missedCallReplyMessage: document.getElementById('missedCallReplyMessage').value.trim(),
           knowledgeBase: document.getElementById('knowledgeBase').value.trim(),
         };
         try {
@@ -175,7 +179,7 @@ app.get('/', (req, res) => {
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      const fields = ['businessName', 'dialect', 'tone', 'greetingMessage', 'knowledgeBase'];
+      const fields = ['businessName', 'dialect', 'tone', 'greetingMessage', 'imageReplyMessage', 'missedCallReplyMessage', 'knowledgeBase'];
       fields.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -213,6 +217,8 @@ app.get('/', (req, res) => {
         dialect: document.getElementById('dialect').value,
         tone: document.getElementById('tone').value,
         greetingMessage: document.getElementById('greetingMessage').value.trim(),
+        imageReplyMessage: document.getElementById('imageReplyMessage').value.trim(),
+        missedCallReplyMessage: document.getElementById('missedCallReplyMessage').value.trim(),
         knowledgeBase: document.getElementById('knowledgeBase').value.trim(),
       };
 
@@ -338,6 +344,16 @@ app.get('/', (req, res) => {
       </div>
 
       <div class="form-group">
+        <label class="form-label">رسالة الرد على الصور ومقاطع الوسائط:</label>
+        <input type="text" id="imageReplyMessage" class="form-input" value="${botSettings.imageReplyMessage || '📷 أهلاً وسهلاً بك! تم استلام الصورة بنجاح، وسأقوم بالرد عليك وتدقيقها في أقرب وقت ممكن بإذن الله.'}" placeholder="الرسالة التي يتم الرد بها عند إرسال صورة" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">رسالة الرد على المكالمات الفائتة:</label>
+        <input type="text" id="missedCallReplyMessage" class="form-input" value="${botSettings.missedCallReplyMessage || '📞 أهلاً وسهلاً بك! نعتذر عن عدم التمكن من الرد على المكالمة حالياً، وسأقوم بالرد والتواصل معك في أقرب وقت ممكن بإذن الله.'}" placeholder="الرسالة التلقائية عند تفويت مكالمة هاتفية" />
+      </div>
+
+      <div class="form-group">
         <label class="form-label">مربع معلومات النشاط / قاعدة المعرفة (Knowledge Base):</label>
         <textarea id="knowledgeBase" class="form-textarea" rows="4" placeholder="اكتب هنا كل ما ترغب أن يعرفه الذكاء الاصطناعي: أوقات الدوام، العناوين، الأسعار، الخدمات، سياسة الحجز...">${botSettings.knowledgeBase || ''}</textarea>
       </div>
@@ -378,12 +394,14 @@ app.get('/api/status', (req, res) => {
 });
 
 app.post('/api/settings', (req, res) => {
-  const { businessName, dialect, tone, greetingMessage, knowledgeBase } = req.body;
+  const { businessName, dialect, tone, greetingMessage, imageReplyMessage, missedCallReplyMessage, knowledgeBase } = req.body;
   saveBotSettings({
     businessName: businessName || botSettings.businessName,
     dialect: dialect || botSettings.dialect,
     tone: tone || botSettings.tone,
     greetingMessage: greetingMessage || botSettings.greetingMessage,
+    imageReplyMessage: imageReplyMessage !== undefined ? imageReplyMessage : botSettings.imageReplyMessage,
+    missedCallReplyMessage: missedCallReplyMessage !== undefined ? missedCallReplyMessage : botSettings.missedCallReplyMessage,
     knowledgeBase: knowledgeBase !== undefined ? knowledgeBase : botSettings.knowledgeBase,
   });
   console.log(`✅ تم تحديث إعدادات الذكاء الاصطناعي: لهجة [${botSettings.dialect}]، نبرة [${botSettings.tone}]`);
@@ -405,8 +423,8 @@ app.post('/api/logout', async (req, res) => {
   } catch (e) {}
 
   try {
-    if (fs.existsSync('./auth_info_baileys')) {
-      fs.rmSync('./auth_info_baileys', { recursive: true, force: true });
+    if (fs.existsSync(AUTH_DIR)) {
+      fs.rmSync(AUTH_DIR, { recursive: true, force: true });
     }
   } catch (e) {
     console.error('خطأ عند حذف مجلد الجلسة:', e.message);
@@ -552,6 +570,9 @@ async function connectToWhatsApp() {
     },
     msgRetryCounterCache,
     generateHighQualityLinkPreview: true,
+    keepAliveIntervalMs: 30000,
+    defaultQueryTimeoutMs: 60000,
+    connectTimeoutMs: 60000,
     getMessage: async (key) => {
       return undefined;
     },
@@ -587,8 +608,8 @@ async function connectToWhatsApp() {
       if (isLoggedOut) {
         console.log('🗑️ تم تسجيل الخروج من الجهاز، جاري تنظيف الجلسة وتوليد رمز QR جديد...');
         try {
-          if (fs.existsSync('./auth_info_baileys')) {
-            fs.rmSync('./auth_info_baileys', { recursive: true, force: true });
+          if (fs.existsSync(AUTH_DIR)) {
+            fs.rmSync(AUTH_DIR, { recursive: true, force: true });
           }
         } catch (e) {}
         setTimeout(connectToWhatsApp, 2000);
@@ -602,7 +623,7 @@ async function connectToWhatsApp() {
       connectedUser = sock.user?.id ? sock.user.id.split(':')[0] : 'رقمك المتصل';
       console.log('\n🎉 ====================================================');
       console.log(`✅ تم ربط واتساب بنجاح برقم: +${connectedUser}`);
-      console.log('🤖 المساعد الذكي جاهز الآن للرد على الرسائل والتسجيلات الصوتية تلقائياً!');
+      console.log('🤖 المساعد الذكي جاهز الآن للرد على الرسائل، الصور، والتسجيلات والمكالمات تلقائياً!');
       console.log(`🌐 يمكنك متابعة الرسائل الحية على: http://localhost:${PORT}`);
       console.log('======================================================\n');
     }
@@ -610,7 +631,44 @@ async function connectToWhatsApp() {
 
   sock.ev.on('creds.update', saveCreds);
 
-  // Incoming Messages Handler (Text + Voice Notes)
+  // Incoming / Missed Calls Handler
+  const recentCallReplies = new Map();
+  sock.ev.on('call', async (callEvents) => {
+    for (const call of callEvents) {
+      const callerJid = call.from;
+      if (!callerJid) continue;
+      const callerNumber = callerJid.split('@')[0];
+
+      // Handle missed or ended calls
+      if (call.status === 'timeout' || call.status === 'terminate' || call.status === 'offer') {
+        const now = Date.now();
+        const lastSent = recentCallReplies.get(callerJid) || 0;
+        // Avoid sending duplicate responses if repeated within 3 minutes
+        if (now - lastSent < 3 * 60 * 1000) continue;
+        recentCallReplies.set(callerJid, now);
+
+        const callReply = botSettings.missedCallReplyMessage || 
+          '📞 أهلاً وسهلاً بك! نعتذر عن عدم التمكن من الرد على المكالمة حالياً، وسأقوم بالرد والتواصل معك في أقرب وقت ممكن بإذن الله.';
+
+        setTimeout(async () => {
+          try {
+            await sock.sendMessage(callerJid, { text: callReply });
+            console.log(`📤 [تم الرد التلقائي على مكالمة فائتة] (+${callerNumber}):\n"${callReply}"\n`);
+            messageLogs.unshift({
+              sender: `+${callerNumber}`,
+              incoming: '📞 [مكالمة هاتفية فائتة / واردة]',
+              reply: callReply,
+              time: new Date().toLocaleTimeString('ar-IQ')
+            });
+          } catch (err) {
+            console.error('❌ خطأ أثناء إرسال رد المكالمة الفائتة:', err.message);
+          }
+        }, 1500);
+      }
+    }
+  });
+
+  // Incoming Messages Handler (Text + Voice Notes + Images + Media)
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     for (const msg of messages) {
       if (msg.key.fromMe) continue;
@@ -621,10 +679,16 @@ async function connectToWhatsApp() {
       const senderNumber = remoteJid.split('@')[0];
       const isAudio = Boolean(msg.message?.audioMessage);
       const audioDuration = msg.message?.audioMessage?.seconds || 0;
+      const isImage = Boolean(msg.message?.imageMessage);
+      const isVideo = Boolean(msg.message?.videoMessage);
+      const isDocument = Boolean(msg.message?.documentMessage);
+      const isSticker = Boolean(msg.message?.stickerMessage);
 
       let text = msg.message?.conversation || 
                  msg.message?.extendedTextMessage?.text || 
-                 msg.message?.imageMessage?.caption || '';
+                 msg.message?.imageMessage?.caption || 
+                 msg.message?.videoMessage?.caption || 
+                 msg.message?.documentMessage?.caption || '';
 
       if (isAudio) {
         console.log(`\n🎙️ [تسجيل صوتي وارد] من (+${senderNumber})، المدة: ${audioDuration} ثانية...`);
@@ -640,18 +704,28 @@ async function connectToWhatsApp() {
         }
       }
 
-      if (!text && !isAudio) continue;
+      // Ignore unsupported empty messages or reactions
+      if (!text && !isAudio && !isImage && !isVideo && !isDocument && !isSticker) continue;
 
       let reply = "";
       const BACKEND_URL = process.env.BACKEND_URL || "https://flowdeskai.pythonanywhere.com";
 
-      if (isAudio && !text) {
+      if (isImage && !text) {
+        // Image sent without caption
+        reply = botSettings.imageReplyMessage || '📷 أهلاً وسهلاً بك! تم استلام الصورة بنجاح، وسأقوم بالرد عليك وتدقيقها في أقرب وقت ممكن بإذن الله.';
+      } else if (isVideo && !text) {
+        reply = '🎥 أهلاً وسهلاً بك! تم استلام مقطع الفيديو بنجاح، وسأقوم بالرد عليك في أقرب وقت ممكن بإذن الله.';
+      } else if (isDocument && !text) {
+        reply = '📄 أهلاً وسهلاً بك! تم استلام المستند/الملف بنجاح، وسأقوم بالرد عليك في أقرب وقت ممكن بإذن الله.';
+      } else if (isSticker) {
+        reply = '👋 أهلاً وسهلاً بك! يسعدنا خدمتك، كيف يمكننا مساعدتك اليوم بخصوص الاستفسارات أو حجز المواعيد؟';
+      } else if (isAudio && !text) {
         // Voice note without transcription key
         reply = `🎙️ أهلاً وسهلاً بحضرتك! استلمت تسجيلك الصوتي (${audioDuration} ثانية) بنجاح.
 
 يسعدنا خدمتك عبر المساعد الذكي لـ FlowDesk AI. مواعيدنا متاحة يومياً من الساعة 9:00 ص إلى 10:00 م. هل ترغب في حجز موعد اليوم، أو توضيح استفسارك لنساعدك فوراً؟`;
       } else {
-        // Normal text or transcribed voice note
+        // Normal text, transcribed voice, or image with caption
         try {
           const response = await fetch(`${BACKEND_URL}/api/v1/channels/webchat/webhook/`, {
             method: "POST",
@@ -678,16 +752,31 @@ async function connectToWhatsApp() {
 
         if (isAudio && text) {
           reply = `🎙️ [تم الاستماع إلى بصمتك الصوتية: "${text}"]\n\n${reply}`;
+        } else if (isImage && text) {
+          reply = `📷 [تم استلام صورتك المرفقة]\n\n${reply}`;
         }
       }
 
       try {
         await sock.sendMessage(remoteJid, { text: reply }, { quoted: msg });
-        console.log(`📤 [تم الرد الذكي على ${isAudio ? 'التسجيل الصوتي' : 'الرسالة'}] (+${senderNumber}):\n"${reply}"\n`);
+        let msgTypeTitle = 'الرسالة';
+        if (isAudio) msgTypeTitle = 'التسجيل الصوتي';
+        else if (isImage) msgTypeTitle = 'الصورة';
+        else if (isVideo) msgTypeTitle = 'الفيديو';
+        else if (isDocument) msgTypeTitle = 'المستند';
+
+        console.log(`📤 [تم الرد الذكي على ${msgTypeTitle}] (+${senderNumber}):\n"${reply}"\n`);
+
+        let incomingLogText = text;
+        if (isAudio) incomingLogText = text ? `🎙️ "${text}"` : `🎙️ [تسجيل صوتي ${audioDuration} ثانية]`;
+        else if (isImage) incomingLogText = text ? `📷 "${text}"` : `📷 [صورة مرفقة]`;
+        else if (isVideo) incomingLogText = text ? `🎥 "${text}"` : `🎥 [مقطع فيديو]`;
+        else if (isDocument) incomingLogText = `📄 [مستند / ملف]`;
+        else if (isSticker) incomingLogText = `💟 [ملصق]`;
 
         messageLogs.unshift({
           sender: `+${senderNumber}`,
-          incoming: isAudio ? (text ? `🎙️ "${text}"` : `🎙️ [تسجيل صوتي ${audioDuration} ثانية]`) : text,
+          incoming: incomingLogText,
           reply: reply,
           time: new Date().toLocaleTimeString('ar-IQ')
         });
